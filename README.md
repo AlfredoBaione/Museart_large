@@ -1,10 +1,10 @@
-# Museart_2
+# Museart_Large
 
 **[TODO (authors): two or three sentences on what the dataset is for, how the
 images were chosen and associated with the music classes, and where the
 recordings and the images come from.]**
 
-Museart_2 contains music recordings and images of artworks, organized in the
+Museart_Large contains music recordings and images of artworks, organized in the
 same 41 classes (genres, historical periods and traditions of music, from
 *Pre-renaissance sacred* to *Heavy metal*):
 
