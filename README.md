@@ -14,7 +14,7 @@ same 41 classes (genres, historical periods and traditions of music, from
 | | Where |
 |---|---|
 | Data | Kaggle: **[TODO: link]** |
-| Preprocessing code (`creation_v2.py`) | GitHub: **[TODO: link]** |
+| Preprocessing code (`preprocess_example.py`) | GitHub: **[TODO: link]** |
 | Paper | **[TODO: citation]** |
 
 ## Contents
@@ -28,8 +28,8 @@ metadata_images.csv    one row per image
 
 The files are released as they are: no format conversion, resampling,
 loudness normalization or cutting. The 30-second segments and the
-train/validation/test split are made by `creation_v2.py` (see
-[Preparing the audio](#preparing-the-audio-creation_v2py)).
+train/validation/test split are made by `preprocess_example.py` (see
+[Preparing the audio](#preparing-the-audio-preprocess_examplepy)).
 
 ### File and folder names
 
@@ -166,7 +166,7 @@ Known problems, measured with ffmpeg:
   its first 76.6 s, while its header states 304.0 s.
 - `Romanticism_chamber_36/360017.m4a` and `Romanticism_chamber_36/360020.m4a`
   contain damaged AAC data: ffmpeg decodes them with many errors and ends
-  with an error code; `creation_v2.py` skips them.
+  with an error code; `preprocess_example.py` skips them.
 - The header of some mp3 files states a wrong duration (one states 1647.8 s
   and contains 499.9 s). The hours in this README were measured by decoding.
 
@@ -193,9 +193,9 @@ The image files are the original ones, byte for byte.
 When the images are split into training and test sets, copies of the same
 artwork can end up on both sides.
 
-## Preparing the audio: creation_v2.py
+## Preparing the audio: preprocess_example.py
 
-`creation_v2.py` (GitHub: **[TODO: link]**) turns `Entire_music` into
+`preprocess_example.py` (GitHub: **[TODO: link]**) turns `Entire_music` into
 segments of 30 seconds, split into training, validation and test sets.
 
 ### Requirements
@@ -210,7 +210,7 @@ and an ffmpeg build of March 2026.
 ### Usage
 
 ```
-python creation_v2.py --source path/to/Entire_music --output path/to/Entire_music_30sec_splits --workers 8
+python preprocess_example.py --source path/to/Entire_music --output path/to/Entire_music_30sec_splits --workers 8
 ```
 
 | Option | Meaning |
@@ -281,7 +281,7 @@ from an empty output folder to obtain the split above.
 
 ## License
 
-- Code (`creation_v2.py`): MIT License, see `LICENSE` in the GitHub
+- Code (`preprocess_example.py`): MIT License, see `LICENSE` in the GitHub
   repository.
 - Data: MIT License.
 

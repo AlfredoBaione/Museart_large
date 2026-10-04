@@ -1,6 +1,6 @@
 """
-creation_v2.py -- dataset of chunked audio files (FLAC or WAV), split into
-train/val/test.
+preprocess_example.py -- dataset of chunked audio files (FLAC or WAV), split
+into train/val/test.
 
 Input: Entire_music, one subfolder per class (130 GB, 41 classes). Every
 track is trimmed of leading/trailing silence, loudness-normalized and cut into
@@ -35,10 +35,10 @@ CPU only (ffmpeg accelerates video in hardware, not audio). The lever is
 MAX_WORKERS.
 
 Usage:
-    python creation_v2.py                 # uses the CONFIG below
-    python creation_v2.py --dry_run       # scan and split only (writes splits.json)
-    python creation_v2.py --workers 16    # overrides MAX_WORKERS
-    python creation_v2.py --format wav    # instead of flac
+    python preprocess_example.py                 # uses the CONFIG below
+    python preprocess_example.py --dry_run       # scan and split only (writes splits.json)
+    python preprocess_example.py --workers 16    # overrides MAX_WORKERS
+    python preprocess_example.py --format wav    # instead of flac
 """
 
 import os
