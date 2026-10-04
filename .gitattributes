@@ -1,0 +1,2 @@
+# The CSV files are stored byte for byte (Windows line ends, as on Kaggle)
+*.csv -text
