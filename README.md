@@ -18,8 +18,8 @@ same 41 classes (genres, historical periods and traditions of music, from
 | | Where |
 |---|---|
 | Data | Kaggle: **[TODO: link]** |
-| Preprocessing code (`preprocess_example.py`) | GitHub: **[TODO: link]** |
-| Paper | **[TODO: citation]** |
+| Preprocessing code (`preprocess_example.py`) | GitHub: https://github.com/AlfredoBaione/Museart_large |
+| Paper | Museart: A Refined Music-Image Dataset (CHItaly '25), https://doi.org/10.1145/3750069.3755967; see [Citation](#citation) |
 
 ## Contents
 
@@ -313,7 +313,7 @@ the same piece are different recordings and are not grouped.
 
 ## Preparing the audio: preprocess_example.py
 
-`preprocess_example.py` (GitHub: **[TODO: link]**) is an example of how the
+`preprocess_example.py` (GitHub: https://github.com/AlfredoBaione/Museart_large) is an example of how the
 audio can be prepared for training: it turns `Entire_music` into mono
 segments of 30 seconds (`CHUNK_LENGTH_SEC` at the top of the script), each in
 the set of its track. Its acoustic rules are those of the authors'
@@ -394,7 +394,7 @@ channels, are in the set of the track, so no track is in two sets.
 
 - Code (`preprocess_example.py`): MIT License, see `LICENSE` in the GitHub
   repository.
-- Data: MIT License.
+- Data: **[TODO: licence]**
 
 ## Citation
 
