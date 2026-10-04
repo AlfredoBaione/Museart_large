@@ -58,15 +58,15 @@ code and a four-digit number, followed by the original extension in lower
 case:
 
 ```
-Entire_music/val/Rock_35/350014.mp3
+Entire_music/val/Rock_35/350013.mp3
 Entire_images/train/Baroque_sacred_06/060632.jpg
 ```
 
-The files were numbered from `0001` in every class before the split, so the
-numbers of a class are spread over its three split folders; the numbers of
-the copies of the same recording removed on 04/10/2026 are missing (see
-[Duplicates](#duplicates)). Audio files and images are numbered separately:
-`Entire_music/.../350014.mp3` and `Entire_images/.../350014.jpg` are not
+In every class the files are numbered from `0001` without gaps, in the
+order of their original names. The numbers belong to the class, not to the
+split folder, so the numbers of a class are spread over its three split
+folders. Audio files and images are numbered separately:
+`Entire_music/.../350013.mp3` and `Entire_images/.../350013.jpg` are not
 related.
 
 ## The 41 classes
@@ -217,7 +217,7 @@ Filled values, out of 5414 tracks:
 
 ```
 file,class,split,info,title,artist,album,date,composer
-Entire_music/val/Rock_35/350014.mp3,Rock,val,01-Hells Bells,Hells Bells,AC/DC,Back In Black,1980,
+Entire_music/val/Rock_35/350013.mp3,Rock,val,01-Hells Bells,Hells Bells,AC/DC,Back In Black,1980,
 Entire_music/val/Baroque_sacred_06/060001.mp3,Baroque sacred,val,"01 - Prelude in E Flat Major, BWV 552","Prelude in E Flat Major, BWV 552",Wolfgang Ruebsam,"Clavierübung III, Vol.1 - J.S.Bach",1994,Johann Sebastian Bach
 Entire_music/train/Baroque_sacred_06/060003.mp3,Baroque sacred,train,,,,,,
 ```
@@ -256,7 +256,7 @@ all other tags were removed.
 Known problems, measured with ffmpeg:
 
 - 276 files contain damaged frames, which decoders skip (56.31 hours in
-  these files). One of them, `Entire_music/test/Jazz_22/220804.mp3`, can be
+  these files). One of them, `Entire_music/test/Jazz_22/220759.mp3`, can be
   decoded only for its first 76.6 s, while its header states 304.0 s.
 - `Entire_music/val/Romanticism_chamber_36/360017.m4a` and
   `Entire_music/train/Romanticism_chamber_36/360020.m4a` contain damaged AAC
@@ -290,8 +290,8 @@ The image files are the original ones, byte for byte.
   recording the copy with the best audio quality was kept.
 - Across classes, 1548 images appear as identical files in two or more
   classes (1569 extra copies), and one track appears in two classes
-  (`Entire_music/train/Rap_hip_hop_32/320236.mp3` and
-  `Entire_music/train/Rock_35/350334.mp3`). Each copy is a file of its own
+  (`Entire_music/train/Rap_hip_hop_32/320231.mp3` and
+  `Entire_music/train/Rock_35/350275.mp3`). Each copy is a file of its own
   class, with its own number.
 - 594 pairs of images inside a class, and 245 pairs across classes, are
   near-duplicates (perceptual hashes: pHash distance up to 8 and dHash
@@ -380,8 +380,8 @@ half of that.
 
 | Path | Content |
 |---|---|
-| `<split>/<class folder>/<number>_<hash>_ch<C>_<NNNN>.flac` | the segments, in the set of their track; `<number>` is the track (`350014`), `<hash>` 6 characters from its path, `<C>` the channel (`0` or `1`; `0` for mono files), `NNNN` the position of the segment in the track (`0000` = first 30 s after the leading silence) |
-| `metadata.csv` | one row per segment: `filename`, `split`, `class_name`, `source_name`, `source_path` (the track, e.g. `val/Rock_35/350014.mp3`), `channel`, `seg_index`, `start_sec`, `duration_sec`, `gain_db` (the gain of the track), `mean_dbfs` (mean amplitude of the segment) |
+| `<split>/<class folder>/<number>_<hash>_ch<C>_<NNNN>.flac` | the segments, in the set of their track; `<number>` is the track (`350013`), `<hash>` 6 characters from its path, `<C>` the channel (`0` or `1`; `0` for mono files), `NNNN` the position of the segment in the track (`0000` = first 30 s after the leading silence) |
+| `metadata.csv` | one row per segment: `filename`, `split`, `class_name`, `source_name`, `source_path` (the track, e.g. `val/Rock_35/350013.mp3`), `channel`, `seg_index`, `start_sec`, `duration_sec`, `gain_db` (the gain of the track), `mean_dbfs` (mean amplitude of the segment) |
 | `skipped.csv` | the tracks not used, with the reason |
 | `manifest.jsonl` | progress of the run |
 
