@@ -1,7 +1,5 @@
 __pycache__/
 *.pyc
 
-# data and output: they are on Kaggle, not here
-Entire_music/
-Entire_images/
+# output of preprocess_example.py
 Entire_music_30sec_splits/

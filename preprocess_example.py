@@ -1,32 +1,48 @@
 """
-preprocess_example.py -- dataset of chunked audio files (FLAC or WAV), split
-into train/val/test.
+preprocess_example.py -- an example of how to prepare the music of the
+dataset for training: every track becomes chunks of CHUNK_LENGTH_SEC seconds
+(FLAC or WAV), kept in the train/val/test split of the track.
 
-Input: Entire_music, one subfolder per class (130 GB, 41 classes). Every
-track is trimmed of leading/trailing silence, loudness-normalized and cut into
-chunks of CHUNK_LENGTH_SEC seconds.
+Input: Entire_music as released, already split into folders:
+    Entire_music/train/<class>/..., Entire_music/val/<class>/...,
+    Entire_music/test/<class>/...
+(41 classes). Every track is trimmed of leading/trailing silence, brought to
+a target loudness with one constant gain, split into its channels and cut
+into chunks of CHUNK_LENGTH_SEC seconds.
 
-1. THE SPLIT IS PER TRACK, NOT PER CHUNK. Each track is assigned to one split
-   once, stratified by class, and all its chunks inherit that split: chunks of
-   the same song never end up in different splits.
-   The assignment is recorded in OUTPUT/splits.json and is NEVER redone:
-   a re-run with new files adds them, it does not redistribute the old ones.
+1. THE SPLIT COMES WITH THE DATASET AND IS KEPT. Each chunk goes to the split
+   of its track (OUTPUT/<split>/<class>/), so chunks of the same track -- and
+   of its two channels -- never end up in different splits. The script does
+   not split anything itself.
 
-2. TWO FFMPEG PROCESSES PER TRACK:
-     - one analysis pass with silencedetect and loudnorm chained;
-     - one pass that trims and normalizes the track and streams it to this
-       script as raw 16-bit samples; the script cuts ALL the chunks by
+2. THE ACOUSTIC RULES (the same rules and values as `preprocess_stream.py
+   --acoustic_rules` of our audio-generation pipeline):
+     - leading and trailing silence removed: below SILENCE_TRIM_DB for at
+       least 0.1 s (ffmpeg silencedetect);
+     - loudness: ONE constant gain per track,
+           gain_dB = min(TARGET_LUFS - measured loudness,
+                         TARGET_TP - measured true peak),
+       applied with ffmpeg `volume`. The track is never compressed and its
+       true peak never goes above TARGET_TP. If the measurement fails, no
+       gain is applied;
+     - stereo: EACH CHANNEL becomes its own mono example (pan=mono|c0=cN),
+       not the average of the two, which cancels out when the channels are in
+       opposite phase (one track of the dataset becomes silence that way);
+     - a chunk whose mean amplitude is below SILENCE_THRESH_DB dBFS is
+       dropped as silence.
+
+3. ONE ANALYSIS PASS AND ONE PASS PER CHANNEL, NO TEMPORARY FILES:
+     - the analysis chains silencedetect and loudnorm (measuring only);
+     - each channel pass trims, applies the gain, resamples to SR and streams
+       raw 16-bit samples to this script, which cuts ALL the chunks by
        counting samples (exactly CHUNK_LENGTH_SEC each, one after the other)
-       and writes them directly into the split folder;
-     - the RMS check done in numpy on the samples already in memory.
-   No temporary folder: the whole decompressed dataset never sits on disk.
+       and writes them directly into the split folder.
 
-   Note on the single analysis pass: loudnorm measures the whole file,
-   leading/trailing silence included. This does not bias the measurement,
-   because EBU R128 integrated loudness is gated: silence is already excluded
-   from the computation.
+   Note on the analysis: loudnorm measures the whole file, leading/trailing
+   silence included. This does not bias the measurement, because EBU R128
+   integrated loudness is gated: silence is already excluded from it.
 
-3. NO FILES SKIPPED SILENTLY. The list of formats covers everything in
+4. NO FILES SKIPPED SILENTLY. The list of formats covers everything in
    Entire_music (ape, aiff, oma included), and at the end every file that was
    not used is printed -- and written to a CSV -- with the reason.
 
@@ -36,7 +52,7 @@ MAX_WORKERS.
 
 Usage:
     python preprocess_example.py                 # uses the CONFIG below
-    python preprocess_example.py --dry_run       # scan and split only (writes splits.json)
+    python preprocess_example.py --dry_run       # scan only, nothing is decoded
     python preprocess_example.py --workers 16    # overrides MAX_WORKERS
     python preprocess_example.py --format wav    # instead of flac
 """
@@ -47,13 +63,12 @@ import csv
 import sys
 import json
 import math
-import random
 import argparse
 import hashlib
 import threading
 import subprocess
 from pathlib import Path
-from collections import Counter, defaultdict
+from collections import Counter
 from multiprocessing import Pool, cpu_count
 
 from tqdm import tqdm
@@ -61,12 +76,11 @@ from tqdm import tqdm
 # =======================
 # CONFIG
 # =======================
-SOURCE_DIR = "Entire_music"                # folder with one subfolder per class
+SOURCE_DIR = "Entire_music"                # folder with train/, val/, test/
 OUTPUT_DIR = "Entire_music_30sec_splits"   # output folder
 CHUNK_LENGTH_SEC = 30                      # length of each chunk in seconds
-SPLIT = {"train": 0.8, "val": 0.1, "test": 0.1}
+SPLITS = ("train", "val", "test")          # split folders inside SOURCE_DIR
 SR = 44100                                 # output sample rate
-SEED = 42                                  # seed of the split (and its identity)
 
 # Chunk format: "flac" or "wav". Exactly the same samples (FLAC is lossless,
 # verified with np.array_equal), 16 bit in both cases.
@@ -78,22 +92,26 @@ SEED = 42                                  # seed of the split (and its identity
 OUTPUT_FORMAT = "flac"
 
 METADATA_FILE = "metadata.csv"
-SPLITS_FILE   = "splits.json"
 SKIPPED_FILE  = "skipped.csv"
 MANIFEST_FILE = "manifest.jsonl"           # to resume an interrupted run
 
-# --- Audio quality ---
-MIN_CHUNK_SEC     = CHUNK_LENGTH_SEC   # a tail shorter than this is discarded
-SILENCE_THRESH_DB = -40.0              # below this RMS the chunk is silence
-SILENCE_TRIM_DB   = -35.0              # threshold for leading/trailing trim
-TARGET_LUFS       = -14.0              # EBU R128 loudness target
-TARGET_TP         = -1.0               # maximum true peak in dB
-TARGET_LRA        = 11.0               # loudness range target
+# --- Acoustic rules (values of preprocess_stream.py --acoustic_rules) ---
+MIN_CHUNK_SEC     = CHUNK_LENGTH_SEC   # a track shorter than this after the
+                                       # trim is skipped; a shorter tail is dropped
+SILENCE_TRIM_DB   = -55.0              # leading/trailing silence threshold
+SILENCE_THRESH_DB = -60.0              # mean amplitude (dBFS) below which a
+                                       # chunk is silence
+TARGET_LUFS       = -18.0              # loudness reached by the constant gain
+TARGET_TP         = -1.0               # true peak never exceeded (dBTP)
+TARGET_LRA        = 20.0               # only needed by loudnorm to measure
+STEREO_SPLIT      = True               # each channel -> its own example;
+                                       # False = average of the channels
 
 # --- Performance ---
-# Each track costs 2 ffmpeg processes running in streaming mode: memory per
-# worker is small and constant. On a dedicated machine you can go up to the
-# number of cores. On a machine with 8 GB of RAM keep 2-3.
+# Each track costs 1 + (number of channels) ffmpeg processes running in
+# streaming mode: memory per worker is small and constant. On a dedicated
+# machine you can go up to the number of cores. On a machine with 8 GB of RAM
+# keep 2-3.
 MAX_WORKERS = max(2, cpu_count() - 1)
 
 # Accepted audio extensions. Everything in SOURCE_DIR that is not listed here
@@ -141,24 +159,25 @@ def source_hash(rel_path: str) -> str:
     return hashlib.md5(rel_path.encode("utf-8")).hexdigest()[:6]
 
 
-def probe_audio(file_path: str) -> tuple[float, str]:
+def probe_audio(file_path: str) -> tuple[float, str, int]:
     """
-    Duration in seconds + codec name of the first audio stream, via ffprobe
-    (reads the headers, does not decode). (0.0, "") if there is no audio.
+    Duration in seconds, codec name and number of channels of the first audio
+    stream, via ffprobe (reads the headers, does not decode).
+    (0.0, "", 0) if there is no audio.
     """
     try:
         result = subprocess.run(
             [
                 "ffprobe", "-v", "error",
                 "-select_streams", "a:0",
-                "-show_entries", "stream=codec_name:format=duration",
+                "-show_entries", "stream=codec_name,channels:format=duration",
                 "-of", "default=noprint_wrappers=1:nokey=0",
                 str(file_path),
             ],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace",
         )
-        duration, codec = 0.0, ""
+        duration, codec, channels = 0.0, "", 0
         for line in (result.stdout or "").splitlines():
             if line.startswith("duration="):
                 try:
@@ -167,9 +186,14 @@ def probe_audio(file_path: str) -> tuple[float, str]:
                     duration = 0.0
             elif line.startswith("codec_name="):
                 codec = line.split("=", 1)[1].strip()
-        return duration, codec
+            elif line.startswith("channels="):
+                try:
+                    channels = int(line.split("=", 1)[1])
+                except ValueError:
+                    channels = 0
+        return duration, codec, channels
     except Exception:
-        return 0.0, ""
+        return 0.0, "", 0
 
 
 def read_exactly(stream, n: int) -> bytes:
@@ -190,12 +214,16 @@ def analyze_file(file_path: str, duration: float) -> dict:
     """
     A single decode of the track, with two chained filters:
       - silencedetect -> where the leading silence ends and the trailing one starts
-      - loudnorm (print_format=json) -> the measured parameters for the second pass
+      - loudnorm (print_format=json) -> measured integrated loudness and true
+        peak (loudnorm only measures here: its output is thrown away)
     Both write to stderr, so they are read together.
 
-    Returns {"trim_start", "trim_end", "loudness" | None}.
+    Returns {"trim_start", "trim_end", "gain_db" | None}, where
+    gain_db = min(TARGET_LUFS - measured loudness, TARGET_TP - measured true
+    peak): the constant gain of the track. None when the measurement failed
+    (then no gain is applied).
     """
-    out = {"trim_start": 0.0, "trim_end": duration, "loudness": None}
+    out = {"trim_start": 0.0, "trim_end": duration, "gain_db": None}
     try:
         result = subprocess.run(
             [
@@ -246,14 +274,12 @@ def analyze_file(file_path: str, duration: float) -> dict:
     if js != -1 and je > js:
         try:
             data = json.loads(stderr[js:je])
-            out["loudness"] = {
-                "measured_I":      data.get("input_i", "-24.0"),
-                "measured_TP":     data.get("input_tp", "-1.0"),
-                "measured_LRA":    data.get("input_lra", "7.0"),
-                "measured_thresh": data.get("input_thresh", "-34.0"),
-            }
+            mi = float(data.get("input_i", "nan"))
+            mtp = float(data.get("input_tp", "nan"))
+            if math.isfinite(mi) and math.isfinite(mtp):
+                out["gain_db"] = min(TARGET_LUFS - mi, TARGET_TP - mtp)
         except Exception:
-            out["loudness"] = None
+            out["gain_db"] = None
 
     return out
 
@@ -280,7 +306,7 @@ def process_song(job: dict) -> dict:
         return {"status": "skip", "rel_src": rel_src, "class_name": cls,
                 "reason": reason, "detail": str(detail)[:300]}
 
-    duration, codec = probe_audio(src)
+    duration, codec, n_channels = probe_audio(src)
     if duration <= 0.0 or not codec:
         return skipped("no readable audio stream", codec)
     if duration < MIN_CHUNK_SEC:
@@ -293,16 +319,13 @@ def process_song(job: dict) -> dict:
     if kept < MIN_CHUNK_SEC:
         return skipped("too short after silence trimming", f"{kept:.1f}s")
 
-    ld = ana["loudness"]
-    if ld:
-        loud = (f"loudnorm=I={TARGET_LUFS}:TP={TARGET_TP}:LRA={TARGET_LRA}:"
-                f"measured_I={ld['measured_I']}:measured_TP={ld['measured_TP']}:"
-                f"measured_LRA={ld['measured_LRA']}:"
-                f"measured_thresh={ld['measured_thresh']}:linear=true")
-    else:
-        # The analysis produced no JSON: single-pass loudnorm. Less accurate,
-        # but the track is not lost -- and the fact is recorded.
-        loud = f"loudnorm=I={TARGET_LUFS}:TP={TARGET_TP}:LRA={TARGET_LRA}"
+    # One constant gain for the whole track (never a compressor): the same
+    # value is applied to every channel.
+    gain_db = ana["gain_db"]
+    gain_filter = f"volume={gain_db:.2f}dB" if gain_db is not None else None
+    # Stereo: one mono example per channel (channels 0 and 1). Averaging them
+    # would cancel the music when the two channels are in opposite phase.
+    channels = [0, 1] if (STEREO_SPLIT and n_channels >= 2) else [None]
 
     safe   = sanitize_filename(Path(src).name)
     shash  = source_hash(rel_src)
@@ -313,81 +336,93 @@ def process_song(job: dict) -> dict:
     # see an OUTPUT_FORMAT changed from the command line inside main().
     ext    = job.get("fmt", OUTPUT_FORMAT)
 
-    # A single pass: seek -> trim -> loudnorm -> mono/SR, written to a pipe as
-    # raw 16-bit samples. No temporary file, no ffmpeg run per chunk.
-    #
-    # WHY THE CHUNKS ARE CUT HERE AND NOT BY FFMPEG: the `segment` muxer cuts
-    # at the first packet whose timestamp reaches the next multiple of
-    # CHUNK_LENGTH_SEC, so its segments last 30 s plus or minus one packet
-    # (measured on an mp3: 30.015, 29.989, 30.015, 29.989... s; with loudnorm
-    # in dynamic mode the first segment can be 16 samples short), and every
-    # segment even slightly shorter than 30 s had to be discarded. Counting
-    # samples gives chunks of exactly CHUNK_LENGTH_SEC, one after the other.
-    command = [
-        "ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error",
-        "-ss", f"{trim_start:.3f}",
-        "-i", str(src),
-        "-t", f"{kept:.3f}",
-        "-map", "0:a:0", "-vn",
-        "-af", loud,
-        "-ar", str(SR), "-ac", "1", "-c:a", "pcm_s16le",
-        "-f", "s16le", "-",
-    ]
     target_frames = int(round(CHUNK_LENGTH_SEC * SR))
     chunks, written, dropped_short, dropped_silent = [], [], 0, 0
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    # stderr is read in a thread: a long error log must not fill its pipe and
-    # block ffmpeg while the samples are read from stdout.
-    errors = []
-    reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()))
-    reader.start()
-    try:
-        seg_index = 0
-        while True:
-            data = read_exactly(proc.stdout, 2 * target_frames)
-            if len(data) < 2 * target_frames:
-                if data:                     # the tail of the track
-                    dropped_short += 1
-                break
-            x = np.frombuffer(data, dtype="<i2")
-            rms = float(np.sqrt(np.mean(np.square(x / 32768.0))))
-            rms_db = 20.0 * math.log10(rms + 1e-12)
-            if rms_db < SILENCE_THRESH_DB:
-                dropped_silent += 1
-            else:
-                p = outdir / f"{safe}_{shash}_{seg_index:04d}.{ext}"
-                sf.write(str(p), x, SR, subtype="PCM_16")
-                written.append(p)
-                chunks.append({
-                    "filename":     p.name,
-                    "split":        split,
-                    "class_name":   cls,
-                    "source_name":  Path(src).name,
-                    "source_path":  rel_src,
-                    "seg_index":    seg_index,
-                    "start_sec":    round(trim_start + seg_index * CHUNK_LENGTH_SEC, 3),
-                    "duration_sec": round(target_frames / float(SR), 3),
-                    "bytes":        p.stat().st_size,   # not in the CSV: used by the report
-                    "rms_db":       round(rms_db, 2),
-                })
-            seg_index += 1
-    except BaseException:
-        proc.kill()
-        for p in written:
-            p.unlink(missing_ok=True)
-        raise
-    finally:
-        proc.stdout.close()
-        returncode = proc.wait()
-        reader.join()
+    for ch in channels:
+        filters = []
+        if ch is not None:
+            filters.append(f"pan=mono|c0=c{ch}")
+        if gain_filter:
+            filters.append(gain_filter)
+        # One pass per channel: seek -> trim -> channel -> gain -> mono/SR,
+        # written to a pipe as raw 16-bit samples. No temporary file, no
+        # ffmpeg run per chunk.
+        #
+        # WHY THE CHUNKS ARE CUT HERE AND NOT BY FFMPEG: the `segment` muxer
+        # cuts at the first packet whose timestamp reaches the next multiple
+        # of CHUNK_LENGTH_SEC, so its segments last 30 s plus or minus one
+        # packet (measured on an mp3: 30.015, 29.989, 30.015, 29.989... s),
+        # and every segment even slightly shorter than 30 s had to be
+        # discarded. Counting samples gives chunks of exactly
+        # CHUNK_LENGTH_SEC, one after the other.
+        command = [
+            "ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error",
+            "-ss", str(trim_start),
+            "-i", str(src),
+            "-t", str(kept),
+            "-map", "0:a:0", "-vn",
+        ]
+        if filters:
+            command += ["-af", ",".join(filters)]
+        command += ["-ar", str(SR), "-ac", "1", "-c:a", "pcm_s16le",
+                    "-f", "s16le", "-"]
+        channel = ch if ch is not None else 0
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        # stderr is read in a thread: a long error log must not fill its pipe
+        # and block ffmpeg while the samples are read from stdout.
+        errors = []
+        reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()))
+        reader.start()
+        try:
+            seg_index = 0
+            while True:
+                data = read_exactly(proc.stdout, 2 * target_frames)
+                if len(data) < 2 * target_frames:
+                    if data:                     # the tail of the track
+                        dropped_short += 1
+                    break
+                x = np.frombuffer(data, dtype="<i2")
+                # Silence gate on the MEAN AMPLITUDE in dBFS (like ffmpeg
+                # volumedetect's mean_volume), as in preprocess_stream.py.
+                mean_dbfs = 20.0 * math.log10(float(np.mean(np.abs(x / 32768.0))) + 1e-7)
+                if mean_dbfs < SILENCE_THRESH_DB:
+                    dropped_silent += 1
+                else:
+                    p = outdir / f"{safe}_{shash}_ch{channel}_{seg_index:04d}.{ext}"
+                    sf.write(str(p), x, SR, subtype="PCM_16")
+                    written.append(p)
+                    chunks.append({
+                        "filename":     p.name,
+                        "split":        split,
+                        "class_name":   cls,
+                        "source_name":  Path(src).name,
+                        "source_path":  rel_src,
+                        "channel":      channel,
+                        "seg_index":    seg_index,
+                        "start_sec":    round(trim_start + seg_index * CHUNK_LENGTH_SEC, 3),
+                        "duration_sec": round(target_frames / float(SR), 3),
+                        "gain_db":      "" if gain_db is None else round(gain_db, 2),
+                        "mean_dbfs":    round(mean_dbfs, 2),
+                        "bytes":        p.stat().st_size,   # not in the CSV: used by the report
+                    })
+                seg_index += 1
+        except BaseException:
+            proc.kill()
+            for p in written:
+                p.unlink(missing_ok=True)
+            raise
+        finally:
+            proc.stdout.close()
+            returncode = proc.wait()
+            reader.join()
 
-    if returncode != 0:
-        # Nothing of a track that ffmpeg could not decode stays on disk.
-        for p in written:
-            p.unlink(missing_ok=True)
-        msg = (errors[0] if errors else b"").decode("utf-8", errors="replace").strip()
-        return skipped("ffmpeg could not decode it", msg)
+        if returncode != 0:
+            # Nothing of a track that ffmpeg could not decode stays on disk.
+            for p in written:
+                p.unlink(missing_ok=True)
+            msg = (errors[0] if errors else b"").decode("utf-8", errors="replace").strip()
+            return skipped("ffmpeg could not decode it", msg)
 
     if not chunks:
         return skipped("no chunk survived the checks",
@@ -395,8 +430,9 @@ def process_song(job: dict) -> dict:
 
     return {"status": "ok", "rel_src": rel_src, "class_name": cls,
             "split": split, "chunks": chunks,
+            "channels": len(channels),
             "dropped_short": dropped_short, "dropped_silent": dropped_silent,
-            "loudnorm_two_pass": bool(ld),
+            "gain_db": None if gain_db is None else round(gain_db, 2),
             "kept_sec": round(kept, 3)}
 
 
@@ -405,129 +441,35 @@ def process_song(job: dict) -> dict:
 # =======================
 def scan_source(source_dir: Path) -> tuple[list[dict], list[dict]]:
     """
-    Scans SOURCE_DIR/<class>/**. Returns (tracks, rejected).
-    Recursive: classes may have subfolders (albums), and each track keeps its
-    relative path as its identity.
+    Scans SOURCE_DIR/<split>/<class>/** for every split in SPLITS. Returns
+    (tracks, rejected). Recursive: classes may have subfolders (albums), and
+    each track keeps its path relative to SOURCE_DIR as its identity. Files
+    that are not inside a split and a class folder are reported, not used.
     """
     songs, rejected = [], []
-    for class_name in sorted(os.listdir(source_dir)):
-        class_path = source_dir / class_name
-        if not class_path.is_dir():
+    for split in SPLITS:
+        if not (source_dir / split).is_dir():
+            print(f"  WARNING: no '{split}' folder in {source_dir}")
+    for fp in sorted(source_dir.rglob("*")):
+        if not fp.is_file():
             continue
-        for fp in sorted(class_path.rglob("*")):
-            if not fp.is_file():
-                continue
-            ext = fp.suffix.lower()
-            rel = fp.relative_to(source_dir).as_posix()
-            if ext in AUDIO_EXTS:
-                songs.append({"src": str(fp), "rel_src": rel,
-                              "class_name": class_name})
-            elif ext not in IGNORED_EXTS:
-                rejected.append({"rel_src": rel, "class_name": class_name,
-                                 "reason": "unrecognized extension",
-                                 "detail": ext or "(none)"})
+        rel = fp.relative_to(source_dir).as_posix()
+        parts = rel.split("/")
+        ext = fp.suffix.lower()
+        if ext in IGNORED_EXTS:
+            continue
+        if len(parts) < 3 or parts[0] not in SPLITS:
+            rejected.append({"rel_src": rel, "class_name": "",
+                             "reason": "not inside <split>/<class>/",
+                             "detail": parts[0]})
+        elif ext in AUDIO_EXTS:
+            songs.append({"src": str(fp), "rel_src": rel,
+                          "split": parts[0], "class_name": parts[1]})
+        else:
+            rejected.append({"rel_src": rel, "class_name": parts[1],
+                             "reason": "unrecognized extension",
+                             "detail": ext or "(none)"})
     return songs, rejected
-
-
-# =======================
-# PER-TRACK SPLIT, STRATIFIED, PERSISTENT
-# =======================
-def target_counts(total: int) -> dict:
-    """
-    How many tracks of a class go into each split, with two guarantees.
-
-    1. Largest remainder: the SPLIT proportions applied to `total` and rounded
-       without losing or inventing tracks.
-    2. From 3 tracks up, val and test ALWAYS have at least 1 element. Without
-       this line the small classes of Entire_music -- there are classes with 3,
-       4 and 5 tracks -- would end up entirely in train and stay out of the
-       test set, which is exactly the flaw the test set should measure.
-    """
-    if total <= 0:
-        return {k: 0 for k in SPLIT}
-    if total == 1:
-        return {"train": 1, "val": 0, "test": 0}
-    if total == 2:
-        return {"train": 1, "val": 1, "test": 0}
-
-    exact = {k: SPLIT[k] * total for k in SPLIT}
-    counts = {k: int(math.floor(v)) for k, v in exact.items()}
-    for k in sorted(SPLIT, key=lambda k: (-(exact[k] - counts[k]), k)):
-        if sum(counts.values()) >= total:
-            break
-        counts[k] += 1
-
-    for k in ("val", "test"):              # the guarantee, paid for by train
-        if counts[k] == 0 and counts["train"] > 1:
-            counts[k] += 1
-            counts["train"] -= 1
-    return counts
-
-
-def assign_splits(songs: list[dict], out_root: Path) -> dict:
-    """
-    One track -> one split. Stratified by class: every class is shuffled with
-    the seed and cut according to SPLIT, so the proportions hold even in the
-    small classes (instead of depending on the luck of 6000 dice rolls).
-
-    The assignment lives in OUTPUT/splits.json and is NEVER redone: tracks
-    already registered keep their split, new ones are added to the least
-    covered one. Changing the split of an already processed track would mean
-    evaluating on data already seen.
-    """
-    splits_path = out_root / SPLITS_FILE
-    existing = {}
-    if splits_path.exists():
-        try:
-            existing = json.loads(splits_path.read_text(encoding="utf-8")).get("assignment", {})
-        except Exception:
-            existing = {}
-
-    rng = random.Random(SEED)
-    by_class = defaultdict(list)
-    for s in songs:
-        by_class[s["class_name"]].append(s["rel_src"])
-
-    assignment = dict(existing)
-    small = []
-    for cls in sorted(by_class):
-        fresh = sorted(r for r in by_class[cls] if r not in assignment)
-        if not fresh:
-            continue
-        rng.shuffle(fresh)
-
-        total = len(by_class[cls])
-        want = target_counts(total)
-        if total < 10:
-            small.append((cls, total, want))
-
-        # How many are still missing to reach `want`, counting those already
-        # assigned in a previous run (which are never touched).
-        have = Counter(assignment[r] for r in by_class[cls] if r in assignment)
-        need = {k: max(0, want[k] - have.get(k, 0)) for k in SPLIT}
-
-        for rel in fresh:
-            pick = max(need, key=lambda k: (need[k], SPLIT[k]))
-            if need[pick] == 0:          # all already covered: the rest to train
-                pick = "train"
-            else:
-                need[pick] -= 1
-            assignment[rel] = pick
-
-    if small:
-        print(f"  WARNING: {len(small)} classes with fewer than 10 tracks. "
-              f"Their val/test sets are tiny:")
-        for cls, n, want in sorted(small, key=lambda x: x[1]):
-            print(f"    {n:>3} tracks  {cls}  -> "
-                  + "/".join(f"{want[k]}" for k in ("train", "val", "test")))
-
-    out_root.mkdir(parents=True, exist_ok=True)
-    splits_path.write_text(json.dumps({
-        "seed": SEED, "ratios": SPLIT, "stratified_by": "class",
-        "unit": "source_file", "n_sources": len(assignment),
-        "assignment": assignment,
-    }, indent=2, ensure_ascii=False), encoding="utf-8")
-    return assignment
 
 
 # =======================
@@ -573,8 +515,8 @@ def main():
                     help=f"Chunk format (default: {OUTPUT_FORMAT}). "
                          f"Same samples, flac takes ~43%% less space.")
     ap.add_argument("--dry_run", action="store_true",
-                    help="Scan and split assignment only, without decoding "
-                         "anything. The split is written to splits.json.")
+                    help="Scan only (tracks per split and class), without "
+                         "decoding anything.")
     ap.add_argument("--force", action="store_true",
                     help="Also reprocess the tracks already in the manifest.")
     args = ap.parse_args()
@@ -585,23 +527,17 @@ def main():
         sys.exit(f"[error] the source folder does not exist: {src_root}")
 
     # --- 1. scan ---
-    print(f"Step 1/4 - Scanning {src_root} ...")
+    print(f"Step 1/3 - Scanning {src_root} ...")
     songs, rejected = scan_source(src_root)
     per_class = Counter(s["class_name"] for s in songs)
+    per_split = Counter(s["split"] for s in songs)
     per_ext = Counter(Path(s["rel_src"]).suffix.lower() for s in songs)
     print(f"  {len(songs)} audio files in {len(per_class)} classes")
+    print("  per split: " + ", ".join(f"{k}: {per_split.get(k, 0)}" for k in SPLITS))
     print("  formats: " + ", ".join(f"{e.lstrip('.')}:{n}"
                                     for e, n in per_ext.most_common()))
     if rejected:
-        print(f"  {len(rejected)} files NOT recognized (they will go to {SKIPPED_FILE})")
-
-    # --- 2. per-track split ---
-    print("\nStep 2/4 - Split assignment (per track, stratified)...")
-    assignment = assign_splits(songs, out_root)
-    print("  " + ", ".join(f"{k}: {v}" for k, v in
-                           sorted(Counter(assignment[s['rel_src']]
-                                          for s in songs).items())))
-    print(f"  recorded in {out_root / SPLITS_FILE}")
+        print(f"  {len(rejected)} files NOT used (they will go to {SKIPPED_FILE})")
 
     done = {} if args.force else load_manifest(out_root)
     todo = [s for s in songs if s["rel_src"] not in done]
@@ -615,15 +551,18 @@ def main():
         print("\n--dry_run: stopping here, nothing was decoded.")
         return
 
+    out_root.mkdir(parents=True, exist_ok=True)
     for s in todo:
-        s["split"] = assignment[s["rel_src"]]
         s["out_root"] = str(out_root)
         s["fmt"] = args.format
 
-    # --- 3. processing ---
-    print(f"\nStep 3/4 - Trim + normalization + cutting ({args.workers} workers)...")
+    # --- 2. processing ---
+    print(f"\nStep 2/3 - Trim + normalization + cutting ({args.workers} workers)...")
     print(f"  output format: {args.format}")
-    print("  2 ffmpeg processes per track, streaming: no temporary files on disk.")
+    print(f"  stereo split: {'each channel -> its own example' if STEREO_SPLIT else 'average of the channels'}; "
+          f"gain to {TARGET_LUFS} LUFS (true peak <= {TARGET_TP} dBTP), "
+          f"trim below {SILENCE_TRIM_DB} dB, chunks below {SILENCE_THRESH_DB} dBFS dropped")
+    print("  1 analysis pass + 1 pass per channel, streaming: no temporary files on disk.")
     # Rebuild the state of previous runs from the manifest: the chunks already
     # written and the tracks already skipped. This way metadata.csv and
     # skipped.csv are always the complete picture, not just the last piece of
@@ -647,16 +586,17 @@ def main():
     finally:
         manifest_f.close()
 
-    # --- 4. report ---
-    print("\nStep 4/4 - Metadata and report...")
+    # --- 3. report ---
+    print("\nStep 3/3 - Metadata and report...")
     meta_fields = ["filename", "split", "class_name", "source_name",
-                   "source_path", "seg_index", "start_sec", "duration_sec",
-                   "rms_db"]
+                   "source_path", "channel", "seg_index", "start_sec",
+                   "duration_sec", "gain_db", "mean_dbfs"]
     with open(out_root / METADATA_FILE, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=meta_fields)
         w.writeheader()
         for c in sorted(all_chunks, key=lambda x: (x["class_name"],
                                                    x["source_path"],
+                                                   x["channel"],
                                                    x["seg_index"])):
             w.writerow({k: c[k] for k in meta_fields})
 
@@ -689,7 +629,6 @@ def main():
         for reason, n in Counter(s.get("reason", "?") for s in skipped).most_common():
             print(f"    {n:>5}  {reason}")
     print(f"  metadata:  {out_root / METADATA_FILE}")
-    print(f"  split:     {out_root / SPLITS_FILE}")
 
 
 if __name__ == "__main__":
