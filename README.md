@@ -1,8 +1,6 @@
 # Museart_Large
 
-**[TODO (authors): two or three sentences on what the dataset is for, how the
-images were chosen and associated with the music classes, and where the
-recordings and the images come from.]**
+**A refined music-image dataset extending Museart (https://www.kaggle.com/datasets/alfredobaione/museart, https://doi.org/10.1145/3750069.3755967)**
 
 Museart_Large contains music recordings and images of artworks, organized in the
 same 41 classes (genres, historical periods and traditions of music, from
@@ -285,8 +283,8 @@ from an empty output folder to obtain the split above.
 
 - Code (`creation_v2.py`): MIT License, see `LICENSE` in the GitHub
   repository.
-- Data: **[TODO (authors): licence of the data.]**
+- Data: MIT License.
 
 ## Citation
 
-**[TODO (authors): authors, contact and citation of the paper (BibTeX).]**
+**Alfredo Baione and Genoveffa Tortora. 2025. Museart: A Refined Music-Image Dataset. In Proceedings of the 16th Biannual Conference of the Italian SIGCHI Chapter (CHItaly '25). Association for Computing Machinery, New York, NY, USA, Article 107, 1–3. https://doi.org/10.1145/3750069.3755967**
