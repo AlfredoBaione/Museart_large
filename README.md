@@ -37,9 +37,16 @@ metadata_images.csv    one row per image
 ```
 
 The GitHub repository has the code, the two CSV files and an example of the
-data in the same folders: one track per class in `Entire_music/` (the
-shortest of every class, 690 MB in all) and one image per class in
-`Entire_images/`. The complete data are on Kaggle.
+data in the same folders: for every class, one track and one image in each
+of `train/`, `val/` and `test/` (123 tracks in `Entire_music/`, 123 images in
+`Entire_images/`). The track is the shortest of the class in that split and
+the image is the one of median file size. In 8 cases even the shortest track
+is above GitHub's 100 MB file limit, so the repository has only its first
+5 minutes, cut without re-encoding: `val/` Country_10, Flemish_secular_20,
+Latin-American_25, North_American_traditional_folklore_28 and
+Pre-renaissance_sacred_30; `test/` Classical_sacred_08, Country_10 and
+Pre-renaissance_sacred_30. The examples take 2.7 GB in all. The complete
+data are on Kaggle.
 
 The files are released as they are: no format conversion, resampling,
 loudness normalization or cutting. `preprocess_example.py` shows how the
