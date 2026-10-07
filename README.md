@@ -401,7 +401,8 @@ channels, are in the set of the track, so no track is in two sets.
 
 - Code (`preprocess_example.py`): MIT License, see `LICENSE` in the GitHub
   repository.
-- Data: **[TODO: licence]**
+- Data: MIT License, see `LICENSE` in the GitHub
+  repository.
 
 ## Citation
 
