@@ -17,7 +17,7 @@ same 41 classes (genres, historical periods and traditions of music, from
 
 | | Where |
 |---|---|
-| Data | Kaggle: **[TODO: link]** |
+| Data | Kaggle: **https://www.kaggle.com/datasets/alfredobaione/museart-large** |
 | Preprocessing code (`preprocess_example.py`) | GitHub: https://github.com/AlfredoBaione/Museart_large |
 | Paper | Museart: A Refined Music-Image Dataset (CHItaly '25), https://doi.org/10.1145/3750069.3755967; see [Citation](#citation) |
 
