@@ -79,6 +79,14 @@ related.
 
 ## The 41 classes
 
+In the historical classes, a track belongs to the period in which its work
+was composed, and an image to the period in which its artist mainly worked.
+Periods: Pre-renaissance up to 1419; Renaissance 1420–1599 (Flemish:
+composers and painters of the Low Countries); Baroque 1600–1749; Classical
+1750–1819 (painting: up to 1799); Romanticism 1820–1849 (painting: from
+1800); Late romanticism 1850–1899; Early 20th century 1900–1929; 20th century
+from 1930.
+
 Hours: duration of the audio, measured by decoding every file with ffmpeg.
 
 | Code | Class | Folder | Tracks | Hours | Images |
@@ -132,7 +140,8 @@ Hours: duration of the audio, measured by decoding every file with ffmpeg.
   only.
 - **80% / 10% / 10% of every class** (stratified by class, rounded with the
   largest remainder); every class with at least 3 files has at least one in
-  validation and one in test.
+  validation and one in test. Exception: the Pop images are 406 / 52 / 51
+  instead of 407 / 51 / 51, because identical files stay in one set.
 - **Files with the same content in the same set.** Identical images (also
   when they are in different classes), images that look like the same
   artwork in another file (perceptual hashes), and tracks that share their
