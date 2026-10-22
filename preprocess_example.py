@@ -3,52 +3,39 @@ preprocess_example.py -- an example of how to prepare the music of the
 dataset for training: every track becomes chunks of CHUNK_LENGTH_SEC seconds
 (FLAC or WAV), kept in the train/val/test split of the track.
 
-Input: Entire_music as released, already split into folders:
+Input: Entire_music as released, with its split folders:
     Entire_music/train/<class>/..., Entire_music/val/<class>/...,
     Entire_music/test/<class>/...
-(41 classes). Every track is trimmed of leading/trailing silence, brought to
-a target loudness with one constant gain, split into its channels and cut
-into chunks of CHUNK_LENGTH_SEC seconds.
 
-1. THE SPLIT COMES WITH THE DATASET AND IS KEPT. Each chunk goes to the split
-   of its track (OUTPUT/<split>/<class>/), so chunks of the same track -- and
-   of its two channels -- never end up in different splits. The script does
-   not split anything itself.
+1. The split of the dataset is kept: each chunk goes to the split of its
+   track (OUTPUT/<split>/<class>/), so the chunks of a track, and of its two
+   channels, are never in different splits.
 
-2. THE ACOUSTIC RULES (the same rules and values as `preprocess_stream.py
-   --acoustic_rules` of our audio-generation pipeline):
+2. Acoustic rules:
      - leading and trailing silence removed: below SILENCE_TRIM_DB for at
        least 0.1 s (ffmpeg silencedetect);
-     - loudness: ONE constant gain per track,
+     - loudness: one constant gain per track,
            gain_dB = min(TARGET_LUFS - measured loudness,
                          TARGET_TP - measured true peak),
-       applied with ffmpeg `volume`. The track is never compressed and its
-       true peak never goes above TARGET_TP. If the measurement fails, no
-       gain is applied;
-     - stereo: EACH CHANNEL becomes its own mono example (pan=mono|c0=cN),
-       not the average of the two, which cancels out when the channels are in
-       opposite phase (one track of the dataset becomes silence that way);
+       applied with ffmpeg `volume`; the track is never compressed. If the
+       measurement fails, no gain is applied;
+     - stereo: each channel becomes its own mono example (pan=mono|c0=cN),
+       instead of the average of the two, which cancels out when the channels
+       are in opposite phase;
      - a chunk whose mean amplitude is below SILENCE_THRESH_DB dBFS is
        dropped as silence.
 
-3. ONE ANALYSIS PASS AND ONE PASS PER CHANNEL, NO TEMPORARY FILES:
-     - the analysis chains silencedetect and loudnorm (measuring only);
-     - each channel pass trims, applies the gain, resamples to SR and streams
-       raw 16-bit samples to this script, which cuts ALL the chunks by
-       counting samples (exactly CHUNK_LENGTH_SEC each, one after the other)
-       and writes them directly into the split folder.
+3. One analysis pass (silencedetect and loudnorm, measuring only) and one
+   pass per channel, which trims, applies the gain, resamples to SR and
+   streams 16-bit samples to this script. The script cuts chunks of exactly
+   CHUNK_LENGTH_SEC by counting samples. No temporary files. The EBU R128
+   integrated loudness is gated, so the silence in the analysis pass does not
+   change it.
 
-   Note on the analysis: loudnorm measures the whole file, leading/trailing
-   silence included. This does not bias the measurement, because EBU R128
-   integrated loudness is gated: silence is already excluded from it.
+4. Every file that is not used is listed, with the reason, in skipped.csv.
 
-4. NO FILES SKIPPED SILENTLY. The list of formats covers everything in
-   Entire_music (ape, aiff, oma included), and at the end every file that was
-   not used is printed -- and written to a CSV -- with the reason.
-
-The GPU plays no role: audio decoding, silencedetect and loudnorm run on the
-CPU only (ffmpeg accelerates video in hardware, not audio). The lever is
-MAX_WORKERS.
+The work runs on the CPU (ffmpeg); MAX_WORKERS is the number of tracks
+processed in parallel.
 
 Usage:
     python preprocess_example.py                 # uses the CONFIG below
@@ -82,20 +69,15 @@ CHUNK_LENGTH_SEC = 30                      # length of each chunk in seconds
 SPLITS = ("train", "val", "test")          # split folders inside SOURCE_DIR
 SR = 44100                                 # output sample rate
 
-# Chunk format: "flac" or "wav". Exactly the same samples (FLAC is lossless,
-# verified with np.array_equal), 16 bit in both cases.
-#   flac -> measured on 8 genres of Entire_music: -43% of space
-#           (471 GB -> ~267 GB), but reading costs 14 ms per 30-s chunk
-#           instead of 2.2. On a slow or network disk, having half the bytes
-#           to read pays for the decoding by itself.
-#   wav  -> immediate reading, full space.
+# Chunk format: "flac" or "wav", 16 bit. FLAC is lossless (the same samples)
+# and takes about half the space; WAV is faster to read.
 OUTPUT_FORMAT = "flac"
 
 METADATA_FILE = "metadata.csv"
 SKIPPED_FILE  = "skipped.csv"
 MANIFEST_FILE = "manifest.jsonl"           # to resume an interrupted run
 
-# --- Acoustic rules (values of preprocess_stream.py --acoustic_rules) ---
+# --- Acoustic rules ---
 MIN_CHUNK_SEC     = CHUNK_LENGTH_SEC   # a track shorter than this after the
                                        # trim is skipped; a shorter tail is dropped
 SILENCE_TRIM_DB   = -55.0              # leading/trailing silence threshold
@@ -108,21 +90,17 @@ STEREO_SPLIT      = True               # each channel -> its own example;
                                        # False = average of the channels
 
 # --- Performance ---
-# Each track costs 1 + (number of channels) ffmpeg processes running in
-# streaming mode: memory per worker is small and constant. On a dedicated
-# machine you can go up to the number of cores. On a machine with 8 GB of RAM
-# keep 2-3.
+# Tracks processed in parallel. Each track runs 1 + (number of channels)
+# ffmpeg processes in streaming mode, with little memory.
 MAX_WORKERS = max(2, cpu_count() - 1)
 
-# Accepted audio extensions. Everything in SOURCE_DIR that is not listed here
-# ends up in the skipped.csv report, never silently dropped.
+# Audio extensions. Any other file in SOURCE_DIR is listed in skipped.csv.
 AUDIO_EXTS = {
     ".mp3", ".wav", ".flac", ".ogg", ".opus", ".m4a", ".mp4", ".aac",
     ".wma", ".mpc", ".ape", ".oma", ".aiff", ".aif", ".aifc", ".wv",
     ".alac", ".tta", ".ac3", ".dsf",
 }
-# Known extensions, deliberately ignored: they do not end up in the report as
-# "unknown", because they are not audio and their absence is not a loss.
+# Not audio: ignored, not listed.
 IGNORED_EXTS = {
     ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".pdf",
     ".m3u", ".m3u8", ".pls", ".txt", ".nfo", ".log", ".cue",
@@ -289,9 +267,9 @@ def analyze_file(file_path: str, duration: float) -> dict:
 # =======================
 def process_song(job: dict) -> dict:
     """
-    One track -> its chunks, already written in the folder of its split.
-    For a broken track it returns a dict with "status": skip, never a bare
-    exception, because one broken file among 6000 must not stop the run.
+    One track -> its chunks, written in the folder of its split. A track that
+    cannot be used returns "status": "skip" instead of raising, so that one
+    broken file does not stop the run.
     """
     import numpy as np
     import soundfile as sf
@@ -319,21 +297,18 @@ def process_song(job: dict) -> dict:
     if kept < MIN_CHUNK_SEC:
         return skipped("too short after silence trimming", f"{kept:.1f}s")
 
-    # One constant gain for the whole track (never a compressor): the same
-    # value is applied to every channel.
+    # One constant gain for the whole track, the same for every channel.
     gain_db = ana["gain_db"]
     gain_filter = f"volume={gain_db:.2f}dB" if gain_db is not None else None
-    # Stereo: one mono example per channel (channels 0 and 1). Averaging them
-    # would cancel the music when the two channels are in opposite phase.
+    # Stereo: one mono example per channel (channels 0 and 1).
     channels = [0, 1] if (STEREO_SPLIT and n_channels >= 2) else [None]
 
     safe   = sanitize_filename(Path(src).name)
     shash  = source_hash(rel_src)
     outdir = out_root / split / cls
     outdir.mkdir(parents=True, exist_ok=True)
-    # The format travels in the job, not in a global: on Windows the workers
-    # are started with `spawn`, re-read the module from scratch and would never
-    # see an OUTPUT_FORMAT changed from the command line inside main().
+    # The format comes with the job: workers started with `spawn` (Windows)
+    # do not see a value set in main().
     ext    = job.get("fmt", OUTPUT_FORMAT)
 
     target_frames = int(round(CHUNK_LENGTH_SEC * SR))
@@ -344,17 +319,9 @@ def process_song(job: dict) -> dict:
             filters.append(f"pan=mono|c0=c{ch}")
         if gain_filter:
             filters.append(gain_filter)
-        # One pass per channel: seek -> trim -> channel -> gain -> mono/SR,
-        # written to a pipe as raw 16-bit samples. No temporary file, no
-        # ffmpeg run per chunk.
-        #
-        # WHY THE CHUNKS ARE CUT HERE AND NOT BY FFMPEG: the `segment` muxer
-        # cuts at the first packet whose timestamp reaches the next multiple
-        # of CHUNK_LENGTH_SEC, so its segments last 30 s plus or minus one
-        # packet (measured on an mp3: 30.015, 29.989, 30.015, 29.989... s),
-        # and every segment even slightly shorter than 30 s had to be
-        # discarded. Counting samples gives chunks of exactly
-        # CHUNK_LENGTH_SEC, one after the other.
+        # One pass per channel: trim, channel, gain, resampling to SR, raw
+        # 16-bit samples on a pipe. The chunks are cut here by counting
+        # samples, so that each lasts exactly CHUNK_LENGTH_SEC.
         command = [
             "ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error",
             "-ss", str(trim_start),
@@ -383,8 +350,8 @@ def process_song(job: dict) -> dict:
                         dropped_short += 1
                     break
                 x = np.frombuffer(data, dtype="<i2")
-                # Silence gate on the MEAN AMPLITUDE in dBFS (like ffmpeg
-                # volumedetect's mean_volume), as in preprocess_stream.py.
+                # Silence gate on the mean amplitude in dBFS (as the
+                # mean_volume of ffmpeg volumedetect).
                 mean_dbfs = 20.0 * math.log10(float(np.mean(np.abs(x / 32768.0))) + 1e-7)
                 if mean_dbfs < SILENCE_THRESH_DB:
                     dropped_silent += 1
@@ -477,13 +444,9 @@ def scan_source(source_dir: Path) -> tuple[list[dict], list[dict]]:
 # =======================
 def load_manifest(out_root: Path) -> dict:
     """
-    rel_src -> record, for every track already EXAMINED in a previous run,
-    whether it succeeded or was skipped.
-
-    Skipped tracks go into the manifest too, for two reasons: a decode that
-    has already failed is not retried at every restart (on 6000 files resuming
-    must be cheap), and skipped.csv stays complete instead of containing only
-    the skips of the last run. To really retry them: --force.
+    rel_src -> record, for every track examined in a previous run, done or
+    skipped. Skipped tracks are not retried at a restart, and skipped.csv
+    stays complete; --force processes everything again.
     """
     path = out_root / MANIFEST_FILE
     done = {}
@@ -563,10 +526,8 @@ def main():
           f"gain to {TARGET_LUFS} LUFS (true peak <= {TARGET_TP} dBTP), "
           f"trim below {SILENCE_TRIM_DB} dB, chunks below {SILENCE_THRESH_DB} dBFS dropped")
     print("  1 analysis pass + 1 pass per channel, streaming: no temporary files on disk.")
-    # Rebuild the state of previous runs from the manifest: the chunks already
-    # written and the tracks already skipped. This way metadata.csv and
-    # skipped.csv are always the complete picture, not just the last piece of
-    # work.
+    # The chunks and the skips of previous runs, from the manifest, so that
+    # metadata.csv and skipped.csv are complete.
     all_chunks = [c for rec in done.values() for c in rec.get("chunks", [])]
     skipped = list(rejected)
     skipped += [rec for rec in done.values() if rec.get("status") == "skip"]
@@ -610,8 +571,7 @@ def main():
                         ["rel_src", "class_name", "reason", "detail"]})
 
     split_counts = Counter(c["split"] for c in all_chunks)
-    # Real space used, not estimated: with OUTPUT_FORMAT="flac" it depends on
-    # the material (orchestral music compresses to 40%, metal to 68%).
+    # Space actually used (the FLAC compression depends on the music).
     used = sum(c.get("bytes", 0) for c in all_chunks) / (1024 ** 3)
     raw = len(all_chunks) * CHUNK_LENGTH_SEC * SR * 2 / (1024 ** 3)
     print("\n" + "=" * 52)
