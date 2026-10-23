@@ -8,7 +8,7 @@ same 41 classes (genres, historical periods and traditions of music, from
 
 - **5414 full-length tracks**, 1543.66 hours, in their original formats
   (126.7 GiB);
-- **26538 images** (3.7 GiB);
+- **25683 images** (3.7 GiB);
 - both split into training, validation and test sets (80% / 10% / 10% of
   every class); files found to share their content (the same recording, the
   same artwork) are always in the same set;
@@ -29,9 +29,9 @@ Entire_music/
     val/               41 class folders, 542 audio files
     test/              41 class folders, 549 audio files
 Entire_images/
-    train/             41 class folders, 21229 images
-    val/               41 class folders, 2650 images
-    test/              41 class folders, 2659 images
+    train/             41 class folders, 20546 images
+    val/               41 class folders, 2563 images
+    test/              41 class folders, 2574 images
 metadata_music.csv     one row per audio file
 metadata_images.csv    one row per image
 ```
@@ -109,7 +109,7 @@ Hours: duration of the audio, measured by decoding every file with ffmpeg.
 | 15 | Early 20th century traditional orchestral | `Early_20th_century_traditional_orchestral_15` | 35 | 27.97 | 721 |
 | 16 | East Asian traditional folklore | `East_Asian_traditional_folklore_16` | 18 | 18.76 | 870 |
 | 17 | East European folklore | `East_European_folklore_17` | 25 | 19.13 | 534 |
-| 18 | Electronic | `Electronic_18` | 78 | 38.28 | 1600 |
+| 18 | Electronic | `Electronic_18` | 78 | 38.28 | 745 |
 | 19 | Flemish sacred | `Flemish_sacred_19` | 5 | 3.98 | 205 |
 | 20 | Flemish secular | `Flemish_secular_20` | 9 | 6.19 | 212 |
 | 21 | Heavy metal | `Heavy_metal_21` | 105 | 64.17 | 1330 |
@@ -132,7 +132,7 @@ Hours: duration of the audio, measured by decoding every file with ffmpeg.
 | 38 | South American traditional folklore | `South_American_traditional_folklore_38` | 9 | 6.95 | 440 |
 | 39 | South European folklore | `South_European_folklore_39` | 24 | 20.28 | 295 |
 | 40 | Western songwriting | `Western_songwriting_40` | 251 | 131.26 | 175 |
-| | **Total** | | **5414** | **1543.66** | **26538** |
+| | **Total** | | **5414** | **1543.66** | **25683** |
 
 ## Training, validation and test sets
 
@@ -140,8 +140,7 @@ Hours: duration of the audio, measured by decoding every file with ffmpeg.
   only.
 - **80% / 10% / 10% of every class** (stratified by class, rounded with the
   largest remainder); every class with at least 3 files has at least one in
-  validation and one in test. Exception: the Pop images are 406 / 52 / 51
-  instead of 407 / 51 / 51, because identical files stay in one set.
+  validation and one in test.
 - **Files with the same content in the same set.** Identical images (also
   when they are in different classes), images that look like the same
   artwork in another file (perceptual hashes), and tracks that share their
@@ -153,10 +152,10 @@ Hours: duration of the audio, measured by decoding every file with ffmpeg.
 
 | Set | Tracks | Hours | Images |
 |---|---:|---:|---:|
-| training (`train`) | 4323 (79.8%) | 1217.72 (78.9%) | 21229 (80.0%) |
-| validation (`val`) | 542 (10.0%) | 151.99 (9.8%) | 2650 (10.0%) |
-| test (`test`) | 549 (10.1%) | 173.95 (11.3%) | 2659 (10.0%) |
-| total | 5414 | 1543.66 | 26538 |
+| training (`train`) | 4323 (79.8%) | 1217.72 (78.9%) | 20546 (80.0%) |
+| validation (`val`) | 542 (10.0%) | 151.99 (9.8%) | 2563 (10.0%) |
+| test (`test`) | 549 (10.1%) | 173.95 (11.3%) | 2574 (10.0%) |
+| total | 5414 | 1543.66 | 25683 |
 
 The proportions are counted on files, so the hours are close to, but not
 exactly, 80% / 10% / 10%.
@@ -183,7 +182,7 @@ Per class (training / validation / test):
 | 15 | `Early_20th_century_traditional_orchestral_15` | 28 / 3 / 4 | 20.72 / 4.65 / 2.60 | 577 / 72 / 72 |
 | 16 | `East_Asian_traditional_folklore_16` | 14 / 2 / 2 | 13.81 / 2.41 / 2.54 | 696 / 87 / 87 |
 | 17 | `East_European_folklore_17` | 20 / 2 / 3 | 14.72 / 1.53 / 2.87 | 427 / 53 / 54 |
-| 18 | `Electronic_18` | 62 / 8 / 8 | 28.79 / 6.32 / 3.17 | 1280 / 160 / 160 |
+| 18 | `Electronic_18` | 62 / 8 / 8 | 28.79 / 6.32 / 3.17 | 596 / 74 / 75 |
 | 19 | `Flemish_sacred_19` | 3 / 1 / 1 | 2.62 / 0.52 / 0.84 | 164 / 20 / 21 |
 | 20 | `Flemish_secular_20` | 7 / 1 / 1 | 4.88 / 1.23 / 0.08 | 170 / 21 / 21 |
 | 21 | `Heavy_metal_21` | 84 / 10 / 11 | 53.09 / 4.54 / 6.53 | 1064 / 133 / 133 |
@@ -194,7 +193,7 @@ Per class (training / validation / test):
 | 26 | `Middle_north_European_folklore_26` | 32 / 4 / 4 | 7.22 / 1.51 / 1.37 | 345 / 43 / 43 |
 | 27 | `Middle_south_Asian_traditional_folklore_27` | 17 / 2 / 2 | 17.13 / 1.82 / 2.40 | 387 / 48 / 49 |
 | 28 | `North_American_traditional_folklore_28` | 7 / 1 / 1 | 1.33 / 2.18 / 0.99 | 345 / 43 / 43 |
-| 29 | `Pop_29` | 37 / 5 / 5 | 52.59 / 1.12 / 4.83 | 406 / 52 / 51 |
+| 29 | `Pop_29` | 37 / 5 / 5 | 52.59 / 1.12 / 4.83 | 407 / 51 / 51 |
 | 30 | `Pre-renaissance_sacred_30` | 1 / 1 / 1 | 0.91 / 1.17 / 1.72 | 326 / 41 / 41 |
 | 31 | `Pre-renaissance_secular_31` | 5 / 1 / 1 | 5.35 / 0.71 / 1.10 | 144 / 18 / 18 |
 | 32 | `Rap_hip_hop_32` | 289 / 36 / 36 | 68.56 / 8.05 / 6.20 | 106 / 13 / 13 |
@@ -253,7 +252,7 @@ One row per image, same format as above.
 ```
 file,class,split,info
 Entire_images/train/Baroque_sacred_06/060769.jpg,Baroque sacred,train,Jacob Jordaens - Bust of Satyr (1621)
-Entire_images/val/Electronic_18/180321.jpg,Electronic,val,Andy Warhol
+Entire_images/val/Pop_29/290001.jpg,Pop,val,Andy Warhol
 Entire_images/train/Heavy_metal_21/210001.jpg,Heavy metal,train,
 ```
 
@@ -290,7 +289,7 @@ Known problems, measured with ffmpeg:
 
 | jpg | jpeg | png | webp |
 |---:|---:|---:|---:|
-| 26466 | 33 | 34 | 5 |
+| 25611 | 33 | 34 | 5 |
 
 The image files are the original ones, byte for byte.
 
@@ -305,12 +304,12 @@ The image files are the original ones, byte for byte.
   2002): for every track, its first 2 minutes were searched in all the other
   tracks, in blocks of 5 s. 574 copies (34.25 hours) were removed; of every
   recording the copy with the best audio quality was kept.
-- Across classes, 1386 images appear as identical files in two or more
-  classes (1405 extra copies), and one track appears in two classes
+- Across classes, 548 images appear as identical files in two or more
+  classes (550 extra copies), and one track appears in two classes
   (`Entire_music/train/Rap_hip_hop_32/320231.mp3` and
   `Entire_music/train/Rock_35/350287.mp3`). Each copy is a file of its own
   class, with its own number.
-- 582 pairs of images inside a class, and 206 pairs across classes, are
+- 576 pairs of images inside a class, and 196 pairs across classes, are
   near-duplicates (perceptual hashes: pHash distance up to 8 and dHash
   distance up to 12), very probably the same artwork in two different
   reproductions. They were kept.
@@ -320,8 +319,8 @@ The image files are the original ones, byte for byte.
   their first 2 minutes (from 10 s to 79% of them). They were kept.
 
 All the files with the same content are in the same set (training,
-validation or test): 65 groups of tracks (251 tracks) and 1814 groups of
-images (3798 images).
+validation or test): 65 groups of tracks (251 tracks) and 989 groups of
+images (2118 images).
 
 What these checks cannot see: two reproductions of the same artwork that
 differ a lot (a strong crop, a photograph taken at an angle), and two tracks
