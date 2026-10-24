@@ -1,0 +1,15 @@
+# Install PyTorch with CUDA first, e.g.:
+#   pip install torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+torch==2.11.0
+torchvision==0.26.0
+torchaudio==2.11.0
+transformers==5.20.2
+numpy==2.5.2
+scikit-learn==1.9.1
+pillow==12.3.0
+# used by the model files of ImageBind
+timm==1.0.30
+ftfy==6.3.1
+regex==2026.9.29
+einops==0.8.2
+iopath==0.1.10

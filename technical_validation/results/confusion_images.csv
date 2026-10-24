@@ -1,0 +1,42 @@
+true \ predicted,Pre-renaissance sacred,Pre-renaissance secular,Flemish sacred,Flemish secular,Renaissance sacred,Renaissance secular,Baroque sacred,Baroque secular,Classical sacred,Classical secular,Romanticism chamber,Romanticism orchestral,Late romanticism chamber,Late romanticism orchestral,Early 20th century traditional chamber,Early 20th century traditional orchestral,Early 20th century experimental chamber,Early 20th century experimental orchestral,20th century traditional chamber,20th century traditional orchestral,20th century experimental chamber,20th century experimental orchestral,African traditional folklore,Afro-American,East Asian traditional folklore,East European folklore,Latin-American,"Middle, north European folklore","Middle, south Asian traditional folklore",North American traditional folklore,South American traditional folklore,South European folklore,Country,Dance,Electronic,Heavy metal,Jazz,Pop,"Rap, hip hop",Rock,Western songwriting
+Pre-renaissance sacred,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Pre-renaissance secular,1,16,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Flemish sacred,0,0,17,2,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Flemish secular,0,0,0,17,1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Renaissance sacred,0,0,0,0,53,7,6,0,2,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Renaissance secular,0,0,0,0,4,90,0,3,0,0,0,0,3,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0
+Baroque sacred,0,0,0,0,2,1,65,7,8,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Baroque secular,0,0,0,0,0,1,10,79,0,3,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Classical sacred,0,0,0,0,0,0,11,1,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Classical secular,0,0,0,0,0,1,0,5,0,24,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0
+Romanticism chamber,0,0,0,0,1,0,1,1,0,2,40,0,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0
+Romanticism orchestral,0,0,0,0,0,0,0,0,0,0,0,20,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Late romanticism chamber,0,0,0,0,0,0,1,1,0,0,3,0,161,18,1,1,3,0,1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,5,0,1,0,0,0
+Late romanticism orchestral,0,0,0,0,0,0,0,0,0,0,1,1,29,172,0,3,0,3,0,0,2,3,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0
+Early 20th century traditional chamber,0,0,0,0,0,0,0,0,0,0,0,0,4,1,19,1,2,0,0,0,1,0,0,0,0,1,0,1,2,1,0,0,0,0,0,3,0,0,0,0,0
+Early 20th century traditional orchestral,0,0,0,0,0,0,0,0,0,0,0,0,1,12,2,44,0,7,0,3,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,0,0,0,0
+Early 20th century experimental chamber,0,0,0,0,0,0,0,0,0,0,0,0,2,0,2,0,40,6,1,0,7,1,0,2,1,0,1,1,1,0,0,0,0,0,0,2,0,1,0,0,0
+Early 20th century experimental orchestral,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,6,5,40,0,2,0,5,0,1,0,2,1,1,0,0,0,0,0,0,1,1,0,0,0,1,0
+20th century traditional chamber,0,0,0,0,0,0,0,0,0,0,0,0,4,0,4,0,2,0,20,0,4,0,1,1,0,0,1,2,1,0,0,2,0,0,0,0,0,0,0,0,3
+20th century traditional orchestral,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,0,1,31,0,3,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0
+20th century experimental chamber,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,1,1,0,72,11,5,1,0,0,3,1,1,0,0,0,0,0,4,3,3,3,0,0,1
+20th century experimental orchestral,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,4,2,0,11,65,1,0,0,4,3,0,1,0,2,1,0,0,3,5,0,1,0,0,0
+African traditional folklore,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,2,2,0,2,5,2,79,5,0,1,1,1,0,1,1,0,0,0,2,1,1,1,1,0,1
+Afro-American,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,2,2,1,1,0,0,6,2,46,0,0,2,0,1,0,1,0,0,0,1,0,0,0,0,2,4
+East Asian traditional folklore,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,85,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+East European folklore,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,1,1,1,2,1,0,1,0,0,0,37,2,1,0,0,0,1,0,0,1,1,0,0,0,0,0
+Latin-American,0,0,0,0,0,0,0,0,0,0,0,0,0,4,2,0,0,0,0,1,4,5,5,1,0,0,57,0,5,0,4,1,0,0,3,3,0,0,0,1,0
+"Middle, north European folklore",0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,3,0,1,1,2,0,1,2,25,0,0,0,0,0,0,0,2,2,0,0,0,0
+"Middle, south Asian traditional folklore",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,0,2,0,3,1,35,0,1,0,0,1,1,0,0,0,0,1,0
+North American traditional folklore,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,1,0,4,33,0,0,0,0,0,0,0,1,0,0,1
+South American traditional folklore,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,0,0,1,2,6,2,0,0,7,3,1,0,16,0,0,0,1,0,0,1,0,1,0
+South European folklore,0,0,0,0,0,0,0,0,0,1,0,0,0,3,0,0,1,1,1,0,0,1,3,1,0,0,1,1,0,0,0,15,0,0,0,0,0,0,0,0,1
+Country,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,7,0,0,0,0,0,0,0,1
+Dance,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,1,0,0,0,0,0,0,15,3,0,0,0,0,0,0
+Electronic,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,5,7,4,0,0,0,2,0,1,1,2,0,0,0,43,7,0,2,0,0,0
+Heavy metal,0,0,0,0,0,0,0,1,0,0,0,0,2,3,0,1,1,2,0,0,2,2,2,1,0,0,6,0,1,0,1,1,0,1,2,104,0,0,0,0,0
+Jazz,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,2,5,0,0,0,1,0,0,0,1,0,0,0,0,16,0,0,1,2
+Pop,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,4,0,0,0,0,2,0,1,0,0,0,3,1,0,35,0,3,0
+"Rap, hip hop",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,8,0,0
+Rock,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,5,0,0,0,1,0,1,0,0,0,0,0,1,1,0,3,2,9,1
+Western songwriting,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,3,0,1,1,0,0,1,0,0,1,0,0,0,0,0,0,1,0,2,0,0,7
