@@ -2,23 +2,13 @@
 
 **A refined music-image dataset extending Museart (https://www.kaggle.com/datasets/alfredobaione/museart, https://doi.org/10.1145/3750069.3755967)**
 
-Museart_Large describes music recordings and images of artworks, organized in
-the same 41 classes (genres, historical periods and traditions of music, from
-*Pre-renaissance sacred* to *Heavy metal*):
-
-- **5413 full-length tracks** (1543.60 hours), released as metadata and as
-  vectors of 49481 pieces of 10 seconds, computed with ImageBind and CLAP;
-- **25683 images**, released as metadata and ImageBind vectors; **14546** of
-  them, reproductions of works whose authors died in 1955 or earlier, are
-  also released as image files (2.3 GiB);
-- both split into training, validation and test sets (80% / 10% / 10% of
-  every class); files found to share their content (the same recording, the
-  same artwork) are always in the same set;
-- two CSV files with the class, the set and the available information for
-  every track and image.
-
-Audio files and images of works still protected by copyright are not
-distributed (see [Copyright](#copyright)).
+Museart_Large is a music-image dataset of **5413 tracks** (1543.60 hours) and
+**25683 images** of artworks, organized in 41 classes: historical periods,
+cultural traditions and musical genres, from *Pre-renaissance sacred* to
+*Heavy metal*. Every track and every image comes with its vectors (ImageBind
+and, for the music, CLAP) and its metadata; the **14546** images of works in
+the public domain are also given as image files. Each class is split into
+training, validation and test sets (80% / 10% / 10%).
 
 | | Where |
 |---|---|
@@ -30,50 +20,40 @@ distributed (see [Copyright](#copyright)).
 
 ```
 Entire_images/
-    train/                        41 class folders, 20546 files of vectors, 11650 images
-    val/                          41 class folders, 2563 files of vectors, 1451 images
-    test/                         41 class folders, 2574 files of vectors, 1445 images
+    train/                        41 class folders: 20546 .npz files, 11650 image files
+    val/                          41 class folders: 2563 .npz files, 1451 image files
+    test/                         41 class folders: 2574 .npz files, 1445 image files
 Entire_music/
-    train/                        41 class folders, 4322 files of vectors
-    val/                          41 class folders, 542 files of vectors
-    test/                         41 class folders, 549 files of vectors
-metadata_images.csv               one row per image (25683)
-metadata_music.csv                one row per track (5413)
+    train/                        41 class folders: 4322 .npz files
+    val/                          41 class folders: 542 .npz files
+    test/                         41 class folders: 549 .npz files
+metadata_images.csv               one row per image
+metadata_music.csv                one row per track
 ```
 
-Nine classes have no image files (see [The 41 classes](#the-41-classes)). The
-image files are the original ones, byte for byte.
+Every image and every track has a `.npz` file with its vectors. The 14546
+images of works in the public domain also have their image file, the
+original one. The GitHub repository has the code, the two CSV files and one
+example image for each class and set that has image files (94 images).
 
-The GitHub repository has the code, the two CSV files and an example of the
-image files: one image for each class and split that has image files (94
-images in `Entire_images/`). The complete data are on Kaggle.
+### File names
 
-### File and folder names
-
-Every track and image has a path, given in the `file` column of the CSV
-files: `<set>/<split>/<class folder>/<file>`, with `<set>` = `Entire_music` or
-`Entire_images` and `<split>` = `train`, `val` or `test`. The vectors of every
-track and image are in the file with the same path and the extension `.npz`.
-The audio files are not distributed, and the image files only for the images
-released as files. Each class has a two-digit code, `00` to `40` (classes in
-alphabetical order), and a folder name: the class name with spaces replaced
-by `_`, commas removed, and the code at the end (`Rock_35`,
-`Rap_hip_hop_32`). Each file is named with the class code and a four-digit
-number, followed by the original extension in lower case:
+The `file` column of the CSV files gives the path of every track and image:
+`<Entire_music or Entire_images>/<set>/<class folder>/<number>.<extension>`.
+The vectors are in the file with the same path and the extension `.npz`:
 
 ```
-Entire_music/val/Rock_35/350014.mp3                a track
+Entire_music/val/Rock_35/350014.mp3                track (metadata_music.csv)
 Entire_music/val/Rock_35/350014.npz                its vectors
-Entire_images/train/Baroque_sacred_06/060769.jpg   an image
+Entire_images/train/Baroque_sacred_06/060769.jpg   image file
 Entire_images/train/Baroque_sacred_06/060769.npz   its vectors
 ```
 
-In every class the files are numbered from `0001` without gaps, in the
-order of their original names. The numbers belong to the class, not to the
-split folder, so the numbers of a class are spread over its three split
-folders. Tracks and images are numbered separately:
-`Entire_music/.../350014.mp3` and `Entire_images/.../350014.jpg` are not
-related.
+Each class has a two-digit code, `00` to `40` (classes in alphabetical
+order), and a folder named after it: the class name with spaces replaced by
+`_`, commas removed, and the code at the end (`Rock_35`, `Rap_hip_hop_32`). A
+file number is the class code followed by four digits; in every class the
+tracks, and separately the images, are numbered from `0001`.
 
 ## The 41 classes
 
@@ -85,8 +65,7 @@ composers and painters of the Low Countries); Baroque 1600–1749; Classical
 1800); Late romanticism 1850–1899; Early 20th century 1900–1929; 20th century
 from 1930.
 
-Hours: duration of the audio, measured by decoding every file with ffmpeg.
-Image files: images also released as files.
+Hours: duration of the tracks. Image files: images also given as files.
 
 | Code | Class | Folder | Tracks | Hours | Images | Image files |
 |---:|---|---|---:|---:|---:|---:|
@@ -135,19 +114,12 @@ Image files: images also released as files.
 
 ## Training, validation and test sets
 
-- **Per track and per image.** Each track and each image is in one set
-  only.
-- **80% / 10% / 10% of every class** (stratified by class, rounded with the
-  largest remainder); every class with at least 3 files has at least one in
-  validation and one in test.
-- **Files with the same content in the same set.** Identical images (also
-  when they are in different classes), images that look like the same
-  artwork in another file (perceptual hashes), and tracks that share their
-  audio (the same recording in two classes, a track contained in a longer
-  file such as a whole album, an edit and its full version; found with an
-  acoustic fingerprint) were kept together. See [Duplicates](#duplicates) for
-  how they were found and what these checks cannot see.
-- Random order with a fixed seed (42).
+Every class is split into the three sets with 80% / 10% / 10% of its tracks
+and of its images (largest remainder; every class has at least one track and
+one image in each set), in a random order with a fixed seed (42). Files with
+the same content are in the same set: identical images, reproductions of the
+same artwork, and tracks that share their audio, such as the same recording
+in two classes or a track contained in a whole album.
 
 | Set | Tracks | Hours | Images | Image files |
 |---|---:|---:|---:|---:|
@@ -155,9 +127,6 @@ Image files: images also released as files.
 | validation (`val`) | 542 (10.0%) | 151.99 (9.8%) | 2563 (10.0%) | 1451 |
 | test (`test`) | 549 (10.1%) | 173.95 (11.3%) | 2574 (10.0%) | 1445 |
 | total | 5413 | 1543.60 | 25683 | 14546 |
-
-The proportions are counted on files, so the hours are close to, but not
-exactly, 80% / 10% / 10%.
 
 Per class (training / validation / test):
 
@@ -205,79 +174,66 @@ Per class (training / validation / test):
 | 39 | `South_European_folklore_39` | 19 / 2 / 3 | 14.88 / 2.66 / 2.74 | 236 / 29 / 30 |
 | 40 | `Western_songwriting_40` | 201 / 25 / 25 | 104.31 / 13.44 / 13.52 | 140 / 17 / 18 |
 
-## metadata_music.csv
+## Metadata
 
-One row per track. UTF-8, comma-separated (values containing a comma are in
-double quotes), Windows line ends (CRLF).
+UTF-8 CSV files, comma-separated, with Windows line ends (CRLF).
+
+`metadata_music.csv`, one row per track:
 
 | Column | Content |
 |---|---|
-| `file` | path of the track (see [File and folder names](#file-and-folder-names)); its vectors are at the same path with the extension `.npz` |
+| `file` | path of the track (see [File names](#file-names)) |
 | `class` | class name |
-| `split` | `train`, `val` or `test`: the set of the file (the same as its folder) |
-| `info` | the original file name without extension. Names that were hard to read were tidied (emoji, decorative letters, underscores used as spaces), signatures and web addresses were removed, unreadable names were rebuilt from the tags, and names with no information were left empty |
-| `title`, `artist`, `album`, `date`, `composer` | from the tags of the original file. Text that is not about the music was removed (signatures, web addresses, values written by software such as `Unknown Artist` or `Track 5`, the name of the uploader and the upload date), and broken accents were repaired. Empty fields were then filled, where possible, with what the original file name says |
+| `split` | set: `train`, `val` or `test` |
+| `info` | original file name of the track, tidied |
+| `title`, `artist`, `album`, `date`, `composer` | from the tags of the original file, cleaned and completed with the information of its name; in classical music `artist` can hold the performer or the composer |
 
-Values are written as they were found: in classical music `artist` can hold
-the performer or the composer; `date` is a year for 2055 tracks and a full
-date or other text (such as `90s`) for 12.
-
-Filled values, out of 5413 tracks:
-
-| `info` | `title` | `artist` | `album` | `date` | `composer` |
-|---:|---:|---:|---:|---:|---:|
-| 5241 | 5170 | 4267 | 3404 | 2067 | 1569 |
-
-172 tracks have none of the five tag fields; 172 have an empty `info`.
+Filled values: `info` 5241, `title` 5170, `artist` 4267, `album` 3404, `date`
+2067, `composer` 1569 (of 5413 tracks).
 
 ```
 file,class,split,info,title,artist,album,date,composer
 Entire_music/val/Rock_35/350014.mp3,Rock,val,01-Hells Bells,Hells Bells,AC/DC,Back In Black,1980,
 Entire_music/val/Baroque_sacred_06/060001.mp3,Baroque sacred,val,"01 - Prelude in E Flat Major, BWV 552","Prelude in E Flat Major, BWV 552",Wolfgang Ruebsam,"Clavierübung III, Vol.1 - J.S.Bach",1994,Johann Sebastian Bach
-Entire_music/train/Baroque_sacred_06/060003.mp3,Baroque sacred,train,,,,,,
 ```
 
-## metadata_images.csv
-
-One row per image, same format as above.
+`metadata_images.csv`, one row per image:
 
 | Column | Content |
 |---|---|
-| `file` | path of the image; its vectors are at the same path with the extension `.npz`, and the image file is there only for the images released as files |
+| `file` | path of the image (see [File names](#file-names)) |
 | `class` | class name |
-| `split` | `train`, `val` or `test`: the set of the file (the same as its folder) |
-| `info` | artist, title and year read from the original file name, written as `Artist - Title (year)` or with the parts that are known; empty when the name carried no information (1673 images whose names carried no information, such as codes or hashes) |
+| `split` | set: `train`, `val` or `test` |
+| `info` | artist, title and year from the original file name, as `Artist - Title (year)` or the parts that are known; empty for 1673 images |
 
 ```
 file,class,split,info
 Entire_images/train/Baroque_sacred_06/060769.jpg,Baroque sacred,train,Jacob Jordaens - Bust of Satyr (1621)
 Entire_images/val/Pop_29/290001.jpg,Pop,val,Andy Warhol
-Entire_images/train/Heavy_metal_21/210001.jpg,Heavy metal,train,
 ```
 
 ## Vectors
 
 The vectors are those of the technical validation (code in
-`technical_validation/` of the GitHub repository): L2-normalized, float32,
-stored as NumPy arrays in `.npz` files.
+`technical_validation/` of the GitHub repository): float32, L2-normalized,
+NumPy arrays in `.npz` files.
 
-- **Images** (`Entire_images/`): one `.npz` file per image, with the array
-  `imagebind` (1024 values). ImageBind (huge), vision encoder (OpenCLIP
-  ViT-H/14); each image was resized to 224 pixels on its shorter side
-  (bicubic), center-cropped to 224 × 224 and normalized as in CLIP.
-- **Music** (`Entire_music/`): one `.npz` file per track, with three arrays
-  of one row per piece: `imagebind` (pieces × 1024), `clap` (pieces × 512)
-  and `start_s`, the start of the piece in seconds. From every track, pieces
-  of 10 s were taken, one for every 2 minutes of music and at least 3 per
-  track, centered in equal parts of the track. Pieces with a mean amplitude
-  below -60 dBFS and pieces that could not be decoded were discarded: 49481
-  of 49844 pieces remain, from all the 5413 tracks.
-- **ImageBind** (`imagebind`, same space as the image vectors): the first
-  channel of the piece at 16 kHz, cut into 3 clips of 2 s at uniform start
-  times, each turned into a 128-bin filterbank as in ImageBind; the vector of
-  the piece is the mean of the 3 clip embeddings.
-- **CLAP** (`clap`): audio embedding of `laion/larger_clap_music_and_speech`
-  (revision `195c3a3`) for the first channel of the piece at 48 kHz.
+- **Images**: array `imagebind` (1024 values), from the vision encoder of
+  ImageBind huge (OpenCLIP ViT-H/14); the image is resized to 224 pixels on
+  its shorter side (bicubic), center-cropped to 224 × 224 and normalized as
+  in CLIP.
+- **Music**: one row per piece of 10 s. The pieces are one for every
+  2 minutes of music, at least 3 per track, centered in equal parts of the
+  track, decodable and not silent (mean amplitude of -60 dBFS or more):
+  49481 pieces.
+  - `imagebind` (pieces × 1024): audio encoder of ImageBind huge, in the same
+    space as the image vectors; first channel at 16 kHz, 3 clips of 2 s, each
+    turned into a 128-bin filterbank as in ImageBind, mean of the 3 clip
+    vectors;
+  - `clap` (pieces × 512): audio embedding of
+    `laion/larger_clap_music_and_speech` (revision `195c3a3`), first channel
+    at 48 kHz;
+  - `start_s`: start of each piece, in seconds.
 
 ```python
 import csv
@@ -292,64 +248,26 @@ nearest = np.argsort(images @ vector)[::-1][:10]
 print([rows[i]['info'] for i in nearest])
 ```
 
-## Copyright
-
-- **Images.** An image is released as a file when the author of the work
-  died in 1955 or earlier. In the European Union the rights of an author run
-  for the life of the author and 70 years after the death, counted from
-  1 January of the following year (Directive 2006/116/EC, art. 1 and 8), and
-  faithful reproductions of works of visual art whose protection has expired
-  are not protected (Directive (EU) 2019/790, art. 14). The date of death of
-  the author named in `info` was taken from Wikidata and checked by hand when
-  the name was ambiguous or misspelled. Only the vector is released for
-  authors who died in 1956 or later or may be alive, for images whose author
-  is not identified (except in the classes of periods before 1850,
-  Pre-renaissance to Romanticism), for images credited to several authors not
-  all identified, and for photographs of three-dimensional works
-  (sculptures, objects, buildings), whose photographer may hold rights.
-- **Music.** No audio is released: the recordings, and many of the
-  compositions, are protected. Every track is described by its metadata and
-  its vectors.
-
-## Images
-
-| jpg | jpeg | png | webp |
-|---:|---:|---:|---:|
-| 14516 | 8 | 17 | 5 |
-
 ## Duplicates
 
-- Inside a class there are no identical files (images: identical bytes;
-  audio: identical audio data).
-- Inside a class there are no two files with the same recording, also when
-  the two files are encoded differently (another format or bitrate, another
-  copy of the same CD, the same song on two compilations). These copies were
-  found by comparing an acoustic fingerprint of the tracks (Haitsma & Kalker,
-  2002): for every track, its first 2 minutes were searched in all the other
-  tracks, in blocks of 5 s. 574 copies (34.25 hours) were removed; of every
-  recording the copy with the best audio quality was kept.
-- Across classes, 548 images appear as identical files in two or more
-  classes (550 extra copies), and one track appears in two classes
-  (`Entire_music/train/Rap_hip_hop_32/320231.mp3` and
-  `Entire_music/train/Rock_35/350287.mp3`). Each copy is a file of its own
-  class, with its own number.
-- 576 pairs of images inside a class, and 196 pairs across classes, are
-  near-duplicates (perceptual hashes: pHash distance up to 8 and dHash
-  distance up to 12), very probably the same artwork in two different
-  reproductions. They were kept.
-- 182 pairs of tracks of different length share part of their audio: a track
-  and a longer file that contains it (a whole album in one file), an edit and
-  its full version. 5 pairs of tracks of the same length share only part of
-  their first 2 minutes (from 10 s to 79% of them). They were kept.
+Within a class, image files are unique (SHA-1) and each recording appears
+once as a track (acoustic fingerprint, Haitsma & Kalker, 2002), although a
+track can also be contained in a longer file, such as a whole album. The same
+image, or the same track, can belong to two classes, as a file of each.
 
-All the files with the same content are in the same set (training,
-validation or test): 65 groups of tracks (251 tracks) and 989 groups of
-images (2118 images).
+## Copyright
 
-What these checks cannot see: two reproductions of the same artwork that
-differ a lot (a strong crop, a photograph taken at an angle), and two tracks
-that share audio only after their first 2 minutes. Different performances of
-the same piece are different recordings and are not grouped.
+Image files are given for the works whose authors died in 1955 or earlier. In
+the European Union a work is protected for the life of its author and
+70 years after the death, counted from 1 January of the following year
+(Directive 2006/116/EC, art. 1 and 8), and faithful reproductions of works of
+visual art whose protection has expired are not protected (Directive (EU)
+2019/790, art. 14). The author of each image is the one named in `info`, with
+the date of death from Wikidata, checked by hand for ambiguous names. Images
+whose author died in 1956 or later or, in the classes from 1850 on, is not
+identified, images of several authors and photographs of three-dimensional
+works (sculptures, objects, buildings) are given as vectors, as is all the
+music.
 
 ## License
 

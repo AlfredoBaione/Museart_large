@@ -59,10 +59,7 @@ python 4_analysis.py
 
 ## Compute the vectors again
 
-Scripts 0-3 compute the vectors from the original image and audio files. The
-audio files and the images of works still protected by copyright are not
-distributed (see the main README); the scripts are given to show how the
-vectors were computed.
+Scripts 0-3 compute the vectors from the original image and audio files.
 
 ### Requirements
 
@@ -80,7 +77,6 @@ vectors were computed.
   git -C ImageBind checkout 53680b02d7e37b19b124fa37bae4b6c98c38f5be
   curl -L -o imagebind_huge.pth https://dl.fbaipublicfiles.com/imagebind/imagebind_huge.pth
   ```
-  Only the model files of ImageBind are used (pytorchvideo is not needed);
 - the CLAP checkpoint is downloaded by `transformers` at its first use
   (revision `195c3a3e68faebb3e2088b9a79e79b43ddbda76b`, about 780 MB);
 - the original image and audio files, in the folders of the dataset.
@@ -124,12 +120,10 @@ stopped when they are run again.
    (short side resized to 224, center crop 224).
 2. `2_music_vectors.py`: the pieces of music, 10 s long, one every 2 minutes
    of music and at least 3 per track, centred in equal parts of the track
-   (durations in `track_durations.csv`, measured by decoding every file):
-   49847 pieces. Each piece is decoded from the first channel at 16 kHz and
-   embedded as in ImageBind (3 clips of 2 s, mean of their vectors). Pieces
-   whose mean amplitude is below -60 dBFS, 357, and pieces that cannot be
-   decoded, 9, are left out: 49481 pieces have a vector. A track is the mean
-   of its pieces.
+   (durations in `track_durations.csv`), decodable and not silent (mean
+   amplitude of -60 dBFS or more): 49481 pieces. Each piece is decoded from
+   the first channel at 16 kHz and embedded as in ImageBind (3 clips of 2 s,
+   mean of their vectors). A track is the mean of its pieces.
 3. `3_clap_vectors.py`: the same pieces, decoded at 48 kHz, through CLAP and
    its own feature extractor.
 4. `4_analysis.py`:
@@ -144,16 +138,8 @@ stopped when they are run again.
      0.001-1, results on `test`; the music classifiers are trained on pieces
      and a track is predicted by the mean probability of its pieces.
 
-One track of the first release, whose AAC data are damaged, gave no piece
-and is no longer in the dataset: the dataset and the analysis have 5413
-tracks.
-
 ## Notes
 
-- The CLAP checkpoint for music only, `laion/larger_clap_music` (revision
-  `a0b4534`), is not used: its published weights are untrained (274 of its
-  555 weight tensors are all zero) and it gives the same vector to every
-  sound and every text.
 - Licences of the models: ImageBind code and weights, CC BY-NC-SA 4.0
   (`LICENSE` of its repository); `laion/larger_clap_music_and_speech`,
   Apache-2.0.
