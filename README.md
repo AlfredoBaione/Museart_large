@@ -4,7 +4,7 @@
 
 Museart_Large is a music-image dataset of **5413 tracks** (1543.60 hours) and
 **25683 images** of artworks, organized in 41 classes: historical periods,
-cultural traditions and musical genres, from *Pre-renaissance sacred* to
+geographical areas and musical genres, from *Pre-renaissance sacred* to
 *Heavy metal*. Every track and every image comes with its vectors (ImageBind
 and, for the music, CLAP) and its metadata; the **14546** images of works in
 the public domain are also given as image files. Each class is split into

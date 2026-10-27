@@ -34,13 +34,14 @@ HISTORICAL = ["Pre-renaissance sacred", "Pre-renaissance secular", "Flemish sacr
               "Early 20th century experimental orchestral", "20th century traditional chamber",
               "20th century traditional orchestral", "20th century experimental chamber",
               "20th century experimental orchestral"]
-CULTURAL = ["African traditional folklore", "Afro-American", "East Asian traditional folklore", "East European folklore",
-            "Latin-American", "Middle, north European folklore", "Middle, south Asian traditional folklore",
-            "North American traditional folklore", "South American traditional folklore", "South European folklore"]
+GEOGRAPHICAL = ["African traditional folklore", "Afro-American", "East Asian traditional folklore",
+                "East European folklore", "Latin-American", "Middle, north European folklore",
+                "Middle, south Asian traditional folklore", "North American traditional folklore",
+                "South American traditional folklore", "South European folklore"]
 STYLISTIC = ["Country", "Dance", "Electronic", "Heavy metal", "Jazz", "Pop", "Rap, hip hop", "Rock",
              "Western songwriting"]
-ORDER = HISTORICAL + CULTURAL + STYLISTIC
-GROUP = np.array([0] * len(HISTORICAL) + [1] * len(CULTURAL) + [2] * len(STYLISTIC))
+ORDER = HISTORICAL + GEOGRAPHICAL + STYLISTIC
+GROUP = np.array([0] * len(HISTORICAL) + [1] * len(GEOGRAPHICAL) + [2] * len(STYLISTIC))
 PERIOD = np.array([max((p for p in PERIODS if c.startswith(p)), key=len) for c in HISTORICAL] + [""] * 19)
 N = len(ORDER)
 
@@ -228,7 +229,7 @@ with open(args.output / "classes.csv", "w", encoding="utf-8", newline="") as f:
                 "nearest_image_class", "track_to_images_same_class", "chance_images", "image_to_tracks_same_class",
                 "chance_tracks", "f1_images", "f1_music_clap", "f1_music_imagebind"])
     for k in range(N):
-        w.writerow([ORDER[k], ["historical", "cultural", "stylistic"][GROUP[k]], (img_y == k).sum(),
+        w.writerow([ORDER[k], ["historical", "geographical", "stylistic"][GROUP[k]], (img_y == k).sum(),
                     (track_y == k).sum(), rank_m2i[k], rank_i2m[k], ORDER[nearest[k]], f"{p_t2i[k]:.4f}",
                     f"{ch_t2i[k]:.4f}", f"{p_i2t[k]:.4f}", f"{ch_i2t[k]:.4f}", f"{f1_img[k]:.4f}",
                     f"{f1_clap[k]:.4f}", f"{f1_ib[k]:.4f}"])

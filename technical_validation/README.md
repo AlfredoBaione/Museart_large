@@ -18,7 +18,7 @@ Cross-modal test (all the files; chance level in brackets):
 | Mean rank of the right image class among the 41, for each music class | 4.46 (21) |
 | Music classes whose right image class is the nearest / in the 5 nearest | 14 / 30 of 41 (1 / 5) |
 | Mean rank of the right music class, for each image class | 8.49 (21) |
-| Music classes whose nearest image class is in the same group (historical, cultural, stylistic) | 33 of 41 (16.25) |
+| Music classes whose nearest image class is in the same group (historical, geographical, stylistic) | 33 of 41 (16.25) |
 | Images of the same class among the 10 nearest to a track, mean of the classes | 17.16% (2.44%) |
 | Tracks of the same class among the 10 nearest to an image, mean of the classes | 11.71% (2.44%) |
 
