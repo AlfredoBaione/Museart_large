@@ -204,12 +204,15 @@ Entire_music/val/Baroque_sacred_06/060001.mp3,Baroque sacred,val,"01 - Prelude i
 | `file` | path of the image (see [File names](#file-names)) |
 | `class` | class name |
 | `split` | set: `train`, `val` or `test` |
-| `info` | artist, title and year from the original file name, as `Artist - Title (year)` or the parts that are known; empty for 1673 images |
+| `artist`, `title`, `year` | from the original file name, where it gives them; names of works, manuscripts and categories given in place of the artist (e.g. *Codex Manesse*, *Ancient Egipt*) are in `title` |
+
+Filled values: `artist` 23320, `title` 5994, `year` 3306 (of 25683 images);
+1673 images have none.
 
 ```
-file,class,split,info
-Entire_images/train/Baroque_sacred_06/060769.jpg,Baroque sacred,train,Jacob Jordaens - Bust of Satyr (1621)
-Entire_images/val/Pop_29/290001.jpg,Pop,val,Andy Warhol
+file,class,split,artist,title,year
+Entire_images/train/Baroque_sacred_06/060769.jpg,Baroque sacred,train,Jacob Jordaens,Bust of Satyr,1621
+Entire_images/val/Pop_29/290001.jpg,Pop,val,Andy Warhol,,
 ```
 
 ## Vectors
@@ -245,7 +248,7 @@ track = np.load('Entire_music/val/Rock_35/350014.npz')
 
 vector = track['imagebind'].mean(axis=0)
 nearest = np.argsort(images @ vector)[::-1][:10]
-print([rows[i]['info'] for i in nearest])
+print([rows[i]['artist'] for i in nearest])
 ```
 
 ## Duplicates
@@ -262,8 +265,10 @@ the European Union a work is protected for the life of its author and
 70 years after the death, counted from 1 January of the following year
 (Directive 2006/116/EC, art. 1 and 8), and faithful reproductions of works of
 visual art whose protection has expired are not protected (Directive (EU)
-2019/790, art. 14). The author of each image is the one named in `info`, with
-the date of death from Wikidata, checked by hand for ambiguous names. Images
+2019/790, art. 14). The author of each image is the one named in `artist`,
+with the date of death from Wikidata, checked by hand for ambiguous names; old
+works without a named author, such as Fayum portraits and medieval manuscripts
+and frescoes (named in `title`), are given as files. Images
 whose author died in 1956 or later or, in the classes from 1850 on, is not
 identified, images of several authors and photographs of three-dimensional
 works (sculptures, objects, buildings) are given as vectors, as is all the
