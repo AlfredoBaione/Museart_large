@@ -1,5 +1,5 @@
 """
-common.py -- paths, pieces of music, ImageBind and CLAP shared by the scripts of the technical validation.
+common.py -- paths, decoding of the music, ImageBind and CLAP shared by the scripts of the technical validation.
 """
 
 import argparse
@@ -7,6 +7,7 @@ import csv
 import math
 import subprocess
 import sys
+import tempfile
 import types
 from pathlib import Path
 
@@ -23,9 +24,7 @@ IMAGEBIND_SHA256 = "d6f6c22bedcc90708448d5d2fbb7b2db9c73f505dc89bd0b2e09b23af1b6
 CLAP_CHECKPOINT = "laion/larger_clap_music_and_speech"
 CLAP_REVISION = "195c3a3e68faebb3e2088b9a79e79b43ddbda76b"
 
-STEP_S = 120.0       # one piece every 2 minutes of music
-MIN_PIECES = 3
-PIECE_S = 10.0
+SEGMENT_S, PIECE_S = 30, 10
 SILENCE_DB = -60.0   # mean amplitude (dBFS) of a silent piece
 
 IB_SAMPLE_RATE = 16000   # ImageBind preprocessing, as imagebind/data.py
@@ -58,11 +57,38 @@ def read_csv(path):
         return list(csv.DictReader(f))
 
 
-def plan(seconds):
-    """Start times of the pieces of a track: a piece centred in each of n equal parts."""
-    n = max(MIN_PIECES, math.floor(seconds / STEP_S))
-    last = max(seconds - PIECE_S, 0.0)
-    return [min(max((i + 0.5) * seconds / n - PIECE_S / 2, 0.0), last) for i in range(n)]
+def is_silent(samples):
+    return 20 * math.log10(float(np.mean(np.abs(samples))) + 1e-7) < SILENCE_DB
+
+
+def decode_stream(path, sample_rate):
+    """FFmpeg decoding the first channel of the whole file to stdout (float32); stderr goes to a temporary file."""
+    err = tempfile.TemporaryFile()
+    cmd = ["ffmpeg", "-v", "error", "-i", str(path), "-af", "pan=mono|c0=c0", "-ar", str(sample_rate),
+           "-f", "f32le", "-"]
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err, bufsize=0), err
+
+
+def read_samples(stream, n):
+    buf = bytearray(4 * n)
+    view, got = memoryview(buf), 0
+    while got < len(buf):
+        k = stream.readinto(view[got:])
+        if not k:
+            break
+        got += k
+    return np.frombuffer(buf, dtype=np.float32, count=got // 4)
+
+
+def end_stream(process, err):
+    """Returncode and messages of a decode_stream."""
+    while process.stdout.read(1 << 16):
+        pass
+    rc = process.wait()
+    err.seek(0)
+    text = err.read().decode("utf-8", "replace").strip()
+    err.close()
+    return rc, text
 
 
 def decode_piece(path, start, seconds, sample_rate):
@@ -73,8 +99,8 @@ def decode_piece(path, start, seconds, sample_rate):
     return np.frombuffer(p.stdout, dtype=np.float32).copy(), p.returncode, p.stderr.decode("utf-8", "replace")
 
 
-def load_imagebind(imagebind_dir, checkpoint, device="cuda"):
-    """ImageBind huge with only the vision and audio branches, loaded without pytorchvideo."""
+def load_imagebind(imagebind_dir, checkpoint, device="cuda", modalities=(VISION, AUDIO)):
+    """ImageBind huge with only the given branches (vision, audio), loaded without pytorchvideo."""
     import torch
     package = types.ModuleType("imagebind")
     package.__path__ = [str(Path(imagebind_dir) / "imagebind")]
@@ -88,13 +114,15 @@ def load_imagebind(imagebind_dir, checkpoint, device="cuda"):
             model = imagebind_model.imagebind_huge(pretrained=False)
     finally:
         torch.linspace = linspace
-    for modality in ("text", "depth", "thermal", "imu"):
+    for modality in ("vision", "audio", "text", "depth", "thermal", "imu"):
+        if modality in modalities:
+            continue
         for modules in (model.modality_preprocessors, model.modality_trunks,
                         model.modality_heads, model.modality_postprocessors):
             del modules[modality]
     state = torch.load(checkpoint, map_location="cpu", weights_only=True, mmap=True)
     prefixes = tuple(f"modality_{part}.{m}." for part in ("preprocessors", "trunks", "heads", "postprocessors")
-                     for m in (VISION, AUDIO))
+                     for m in modalities)
     model.load_state_dict({k: v for k, v in state.items() if k.startswith(prefixes)}, strict=True, assign=True)
     on_meta = [n for n, t in list(model.named_parameters()) + list(model.named_buffers()) if t.is_meta]
     assert not on_meta, on_meta
@@ -177,8 +205,32 @@ def clap_features(samples):
 def embed_clap(model, input_features, is_longer, device="cuda"):
     """Batch of features -> L2-normalized float32 array [B, 512]."""
     import torch
+    if isinstance(input_features, np.ndarray):
+        input_features, is_longer = torch.from_numpy(input_features), torch.from_numpy(is_longer)
     with torch.no_grad():
-        out = model.get_audio_features(input_features=torch.from_numpy(input_features).to(device),
-                                       is_longer=torch.from_numpy(is_longer).to(device))
+        out = model.get_audio_features(input_features=input_features.to(device), is_longer=is_longer.to(device))
     vectors = out.pooler_output if hasattr(out, "pooler_output") else out
     return torch.nn.functional.normalize(vectors.float(), dim=-1).cpu().numpy()
+
+
+class ClapFeaturesGPU:
+    """The log-mel features of the CLAP feature extractor for pieces of exactly 10 s, computed with torch.stft in
+    float64 (equal to those of the feature extractor); call load_clap first."""
+
+    def __init__(self, device="cuda"):
+        import torch
+        from transformers.audio_utils import window_function
+        assert _clap_features.truncation == "rand_trunc"
+        assert _clap_features.nb_max_samples == PIECE_S * CLAP_SAMPLE_RATE
+        self.n_fft, self.hop = _clap_features.fft_window_size, _clap_features.hop_length
+        self.window = torch.from_numpy(window_function(self.n_fft, "hann")).to(device, torch.float64)
+        self.filters = torch.from_numpy(_clap_features.mel_filters_slaney.T.copy()).to(device, torch.float64)
+
+    def __call__(self, pieces):
+        """[B, 480000] tensor on the device -> (input_features, is_longer)."""
+        import torch
+        spec = torch.stft(pieces.to(torch.float64), self.n_fft, self.hop, window=self.window, center=True,
+                          pad_mode="reflect", return_complex=True)
+        mel = torch.clamp(self.filters @ spec.abs() ** 2, min=1e-10)
+        features = (10.0 * torch.log10(mel)).transpose(1, 2).float().unsqueeze(1)
+        return features, torch.zeros((len(pieces), 1), dtype=torch.bool, device=pieces.device)

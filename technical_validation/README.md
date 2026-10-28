@@ -15,12 +15,12 @@ Cross-modal test (all the files; chance level in brackets):
 
 | Measure | Result |
 |---|---:|
-| Mean rank of the right image class among the 41, for each music class | 4.46 (21) |
-| Music classes whose right image class is the nearest / in the 5 nearest | 14 / 30 of 41 (1 / 5) |
-| Mean rank of the right music class, for each image class | 8.49 (21) |
-| Music classes whose nearest image class is in the same group (historical, geographical, stylistic) | 33 of 41 (16.25) |
-| Images of the same class among the 10 nearest to a track, mean of the classes | 17.16% (2.44%) |
-| Tracks of the same class among the 10 nearest to an image, mean of the classes | 11.71% (2.44%) |
+| Mean rank of the right image class among the 41, for each music class | 4.54 (21) |
+| Music classes whose right image class is the nearest / in the 5 nearest | 15 / 31 of 41 (1 / 5) |
+| Mean rank of the right music class, for each image class | 8.32 (21) |
+| Music classes whose nearest image class is in the same group (historical, geographical, stylistic) | 35 of 41 (16.30) |
+| Images of the same class among the 10 nearest to a track, mean of the classes | 17.52% (2.44%) |
+| Tracks of the same class among the 10 nearest to an image, mean of the classes | 11.89% (2.44%) |
 
 None of the 10000 permutations of the class labels (1000 for the nearest
 files) reached these values (p = 0.0001 and p = 0.001).
@@ -31,11 +31,11 @@ chance 2.44% for the balanced accuracy):
 | Classifier | Accuracy | Balanced accuracy | Macro F1 |
 |---|---:|---:|---:|
 | Images, 2574 images | 70.82% (8.43%) | 68.19% | 69.74% |
-| Music (CLAP), 549 tracks | 79.23% (25.32%) | 45.31% | 43.28% |
-| Music (ImageBind audio encoder, for comparison), 549 tracks | 78.51% (25.32%) | 43.52% | 42.13% |
+| Music (CLAP), 547 tracks | 79.52% (25.41%) | 40.30% | 37.92% |
+| Music (ImageBind audio encoder, for comparison), 547 tracks | 82.08% (25.41%) | 54.25% | 51.84% |
 
 The music classifiers miss most of the tracks of the classes with few tracks
-(11 music classes have a single track in the test set); 82.5% of the errors
+(11 music classes have a single track in the test set); 84.8% of the errors
 of the CLAP classifier fall in a class of the same group.
 
 All the numbers are in `results/results.txt`, the values per class in
@@ -45,21 +45,22 @@ confusion matrices of the test sets in `results/confusion_*.csv`.
 
 ## Run the analysis on the published vectors
 
-The vectors are published with the dataset on Kaggle: a `.npz` file next to
-every image and every track (see the main README). With Python 3.9 or later,
-numpy and scikit-learn (`pip install numpy scikit-learn`):
+The vectors are published with the dataset on Kaggle: the `ib_` file of every
+image and the `ib_` and `c_` files of the pieces of every segment (see the
+main README). With Python 3.9 or later, numpy and scikit-learn
+(`pip install numpy scikit-learn`):
 
 ```
 python dataset_vectors.py --data path/to/Museart_Large
-python 4_analysis.py
+python 3_analysis.py
 ```
 
 `dataset_vectors.py` writes the vectors in `output/` in the files read by
-`4_analysis.py`, which gives the results above in a few minutes on the CPU.
+`3_analysis.py`, which gives the results above in about 50 minutes on the CPU.
 
 ## Compute the vectors again
 
-Scripts 0-3 compute the vectors from the original image and audio files.
+Scripts 0-2 compute the vectors from the original image and audio files.
 
 ### Requirements
 
@@ -91,8 +92,7 @@ GeForce RTX 5050 Laptop GPU (8 GB).
 python 0_check_models.py   --imagebind ImageBind --checkpoint imagebind_huge.pth
 python 1_image_vectors.py  --data path/to/Museart_Large --imagebind ImageBind --checkpoint imagebind_huge.pth
 python 2_music_vectors.py  --data path/to/Museart_Large --imagebind ImageBind --checkpoint imagebind_huge.pth
-python 3_clap_vectors.py   --data path/to/Museart_Large
-python 4_analysis.py
+python 3_analysis.py
 ```
 
 | Option | Meaning |
@@ -103,10 +103,10 @@ python 4_analysis.py
 | `--checkpoint` | `imagebind_huge.pth` (default: `imagebind_huge.pth`) |
 
 The defaults are at the top of `common.py`. Times on the GPU above: about
-10 minutes (images), 30 minutes (ImageBind, music), 50 minutes (CLAP, music;
-most of the time goes in decoding the audio from disk), 4 minutes (analysis,
-on the CPU). Scripts 1-3 save their work in chunks and continue where they
-stopped when they are run again.
+10 minutes (images), 4 hours and 20 minutes (music, both models), 50 minutes
+(analysis, on the CPU). Scripts 1 and 2 save their work as they go (chunks of
+images, one file per track) and continue where they stopped when they are run
+again.
 
 ## What the scripts do
 
@@ -118,15 +118,14 @@ stopped when they are run again.
    right text prompt.
 1. `1_image_vectors.py`: one vector per image, preprocessed as in ImageBind
    (short side resized to 224, center crop 224).
-2. `2_music_vectors.py`: the pieces of music, 10 s long, one every 2 minutes
-   of music and at least 3 per track, centred in equal parts of the track
-   (durations in `track_durations.csv`), decodable and not silent (mean
-   amplitude of -60 dBFS or more): 49481 pieces. Each piece is decoded from
-   the first channel at 16 kHz and embedded as in ImageBind (3 clips of 2 s,
-   mean of their vectors). A track is the mean of its pieces.
-3. `3_clap_vectors.py`: the same pieces, decoded at 48 kHz, through CLAP and
-   its own feature extractor.
-4. `4_analysis.py`:
+2. `2_music_vectors.py`: every track is decoded once from its start (first
+   channel, at 16 kHz and at 48 kHz) and read in segments of 30 s; each
+   segment of `metadata_music.csv` gives three pieces of 10 s, and a piece
+   whose mean amplitude is below -60 dBFS gets no vector: 542829 pieces.
+   ImageBind embeds a piece as the mean of the vectors of 3 clips of 2 s;
+   CLAP embeds it with the log-mel features of its feature extractor,
+   computed on the GPU. A track is the mean of its pieces.
+3. `3_analysis.py`:
    - cross-modal test: the centroid of each image class and of each music
      class; the cosine of every music class with every image class; the rank
      of the right class; a permutation test on the labels of the 41 image
@@ -143,7 +142,8 @@ stopped when they are run again.
 - Licences of the models: ImageBind code and weights, CC BY-NC-SA 4.0
   (`LICENSE` of its repository); `laion/larger_clap_music_and_speech`,
   Apache-2.0.
-- Run again on the same machine, scripts 1-3 gave the same vectors bit for
-  bit (all the images; the first 100 tracks for the music).
-  On another GPU or driver the last digits may change, since ImageBind runs
-  in float16.
+- Run again on the same machine, scripts 1 and 2 gave the published vectors
+  bit for bit (all the images; for the music, 11 tracks of all the formats).
+  The music vectors can differ by up to 2e-4 when the pieces are embedded in
+  batches of a different composition, and on another GPU or driver the last
+  digits may change, since ImageBind runs in float16.

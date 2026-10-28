@@ -1,5 +1,5 @@
 """
-4_analysis.py -- the cross-modal test and the classifiers, on the vectors in OUTPUT; a few minutes on the CPU.
+3_analysis.py -- the cross-modal test and the classifiers, on the vectors in OUTPUT.
 
 Cross-modal test (ImageBind, nothing trained): rank of the right class among the 41 class centroids and share of
 the same class among the 10 nearest files, with permutation tests. Classifiers: logistic regression on standardized
@@ -7,7 +7,7 @@ vectors, C chosen on the macro F1 of val, results on test; a track is predicted 
 pieces. Writes results.txt, classes.csv, similarity.csv and confusion_*.csv in OUTPUT.
 
 Usage:
-    python 4_analysis.py
+    python 3_analysis.py
 """
 
 import copy
@@ -22,7 +22,7 @@ from sklearn.preprocessing import StandardScaler
 
 import common
 
-PERMUTATIONS, K, SEED = 10000, 10, 0
+PERMUTATIONS, K, SEED, CHUNK = 10000, 10, 0, 65536
 C_GRID = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0]
 PERIODS = ["Pre-renaissance", "Flemish", "Renaissance", "Baroque", "Classical", "Romanticism", "Late romanticism",
            "Early 20th century", "20th century"]
@@ -60,28 +60,33 @@ def normalize(x):
     return x / np.linalg.norm(x, axis=-1, keepdims=True)
 
 
+def finite(x):
+    return all(np.isfinite(x[i:i + CHUNK]).all() for i in range(0, len(x), CHUNK))
+
+
 img = np.load(args.output / "image_vectors.npy")
 img_rows = common.read_csv(args.output / "image_index.csv")
-assert len(img_rows) == len(img) and not np.isnan(img).any()
+assert len(img_rows) == len(img) and finite(img)
 img_y = np.array([ORDER.index(r["class"]) for r in img_rows])
 img_split = np.array([r["split"] for r in img_rows])
 
-pieces = [r for r in common.read_csv(args.output / "music_pieces.csv") if int(r["vector_row"]) >= 0]
-mus = np.load(args.output / "music_vectors_imagebind.npy")
-clap = np.load(args.output / "music_vectors_clap.npy")
+pieces = common.read_csv(args.output / "music_pieces.csv")
+mus = np.load(args.output / "music_vectors_imagebind.npy", mmap_mode="r")
+clap = np.load(args.output / "music_vectors_clap.npy", mmap_mode="r")
 assert len(pieces) == len(mus) and [int(r["vector_row"]) for r in pieces] == list(range(len(mus)))
-assert clap.shape == (len(mus), 512) and not np.isnan(clap).any()
+assert clap.shape == (len(mus), 512) and finite(mus) and finite(clap)
 piece_y = np.array([ORDER.index(r["class"]) for r in pieces])
 piece_split = np.array([r["split"] for r in pieces])
 by_track = defaultdict(list)
 for i, r in enumerate(pieces):
-    by_track[r["file"]].append(i)
+    by_track[r["track"]].append(i)
 track_files = list(by_track)
-track_rows = {r["file"]: r for r in pieces}
+track_rows = {r["track"]: r for r in pieces}
 track_y = np.array([ORDER.index(track_rows[f]["class"]) for f in track_files])
 track_split = np.array([track_rows[f]["split"] for f in track_files])
 track_vec = normalize(np.stack([mus[by_track[f]].mean(axis=0) for f in track_files]))
-say(f"images {len(img)}; music: {len(mus)} pieces with a vector, {len(track_files)} tracks")
+say(f"images {len(img)}; music: {len(mus)} pieces of {len({r['segment'] for r in pieces})} segments, "
+    f"{len(track_files)} tracks")
 
 c_img = normalize(np.stack([img[img_y == k].mean(axis=0) for k in range(N)]))
 c_mus = normalize(np.stack([track_vec[track_y == k].mean(axis=0) for k in range(N)]))
@@ -160,7 +165,8 @@ p_i2t, ch_i2t = file_level("image -> tracks", img_y, track_y, top_k(img, track_v
 
 
 def fit(x_tr, y_tr, x_val, y_val):
-    scaler = StandardScaler().fit(x_tr)
+    """x_tr and x_val are standardized in place."""
+    scaler = StandardScaler(copy=False).fit(x_tr)
     x_tr, x_val = scaler.transform(x_tr), scaler.transform(x_val)
     best = None
     clf = LogisticRegression(max_iter=3000, warm_start=True)  # C grows along the grid, from the previous solution
@@ -199,7 +205,8 @@ def music_classifier(name, vectors):
     """Classifier on the piece vectors; a track is predicted by the mean probability of its pieces."""
     tr, va, te = (piece_split == s for s in ("train", "val", "test"))
     scaler, clf, c = fit(vectors[tr], piece_y[tr], vectors[va], piece_y[va])
-    proba = clf.predict_proba(scaler.transform(vectors))
+    proba = np.concatenate([clf.predict_proba(scaler.transform(np.array(vectors[i:i + CHUNK])))
+                            for i in range(0, len(vectors), CHUNK)])
     say(f"  {name}: C = {c}, trained on {tr.sum()} pieces of {(track_split == 'train').sum()} tracks, tested on "
         f"{te.sum()} pieces of {(track_split == 'test').sum()} tracks")
     report(f"{name} pieces, test", piece_y[te], proba[te].argmax(axis=1), Counter(piece_y[tr]).most_common(1)[0][0])

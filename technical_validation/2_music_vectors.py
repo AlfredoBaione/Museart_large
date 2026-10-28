@@ -1,17 +1,20 @@
 """
-2_music_vectors.py -- the pieces of music and their ImageBind vectors, computed from the audio files.
+2_music_vectors.py -- ImageBind and CLAP vectors of the pieces of 10 s of the segments, computed from the audio files.
 
-Pieces of 10 s planned on track_durations.csv (common.plan); silent pieces get no vector. Writes
-OUTPUT/music_vectors_imagebind.npy and OUTPUT/music_pieces.csv (every planned piece with its status and its row in
-the vectors, or -1). A new run starts from the first missing chunk of 100 tracks.
+Every track is decoded once by FFmpeg from its start (first channel, 16 kHz and 48 kHz) and read in segments of
+30 s; each segment of metadata_music.csv gives its three pieces of 10 s, and a silent piece gets no vector.
+ImageBind: 3 clips of 2 s per piece; CLAP: the features of its feature extractor, computed on the GPU. One file
+per track in OUTPUT/vectors/, written when the track is complete (a new run skips the tracks already written);
+then OUTPUT/music_vectors_imagebind.npy, music_vectors_clap.npy and music_pieces.csv.
 
 Usage:
     python 2_music_vectors.py --data D:/Museart_Large --imagebind ImageBind --checkpoint imagebind_huge.pth
 """
 
 import csv
-import math
+import queue
 import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -19,78 +22,156 @@ import torch
 
 import common
 
-CHUNK, BATCH, THREADS = 100, 64, 6
+BATCH, THREADS = 64, 6
+SR16, SR48 = common.IB_SAMPLE_RATE, common.CLAP_SAMPLE_RATE
+PIECES = common.SEGMENT_S // common.PIECE_S
 
 args = common.parse_args(__doc__.splitlines()[1], imagebind=True)
-out = args.output / "vectors"
-log = open(args.output / "music_vectors_imagebind.log", "a", encoding="utf-8", buffering=1)
-durations = {r["file"]: float(r["seconds"]) for r in common.read_csv(common.HERE / "track_durations.csv")}
-tracks = common.read_csv(args.data / "metadata_music.csv")
+log = open(args.output / "music_vectors.log", "a", encoding="utf-8", buffering=1)
+
+tracks, segments = {}, defaultdict(set)
+for r in common.read_csv(args.data / "metadata_music.csv"):
+    track, n = r["file"].rsplit("_", 1)
+    tracks.setdefault(track, r)
+    segments[track].add(int(n))
 
 
-def piece(job):
-    path, start = job
-    samples, rc, err = common.decode_piece(path, start, common.PIECE_S, common.IB_SAMPLE_RATE)
-    if len(samples) < 2 * common.IB_SAMPLE_RATE:
-        return None, len(samples), f"short ({len(samples)} samples, FFmpeg {rc}: {err.strip()[:120]})"
-    mean_dbfs = 20 * math.log10(float(np.mean(np.abs(samples))) + 1e-7)
-    if mean_dbfs < common.SILENCE_DB:
-        return None, len(samples), f"silent ({mean_dbfs:.1f} dBFS)"
-    clips = common.piece_to_clips(torch.from_numpy(samples).unsqueeze(0))
-    return clips, len(samples), f"ok, FFmpeg {rc}" if rc else "ok"
+def audio_file(track):
+    found = [p for p in (args.data / track).parent.glob((args.data / track).name + ".*") if p.suffix != ".npz"]
+    assert len(found) == 1, (track, found)
+    return found[0]
 
 
-chunks = [tracks[i:i + CHUNK] for i in range(0, len(tracks), CHUNK)]
-todo = [k for k in range(len(chunks)) if not (out / f"music_{k:03d}.npz").exists()]
-total = sum(len(common.plan(durations[t["file"]])) for t in tracks)
-log.write(f'{time.strftime("%Y-%m-%d %H:%M:%S")} start: {len(tracks)} tracks, {total} pieces planned, '
-          f'{len(chunks)} chunks, {len(todo)} to do\n')
-model = common.load_imagebind(args.imagebind, args.checkpoint) if todo else None
+def target(track):
+    return args.output / "vectors" / (track + ".npz")
+
+
+def say(text):
+    log.write(f'{time.strftime("%Y-%m-%d %H:%M:%S")} {text}\n')
+
+
+todo = sorted((t for t in tracks if not target(t).exists()), key=lambda t: -audio_file(t).stat().st_size)
+say(f"start: {len(tracks)} tracks, {len(todo)} to do")
+q = queue.Queue(maxsize=2 * BATCH)
+
+
+def worker(i):
+    track = todo[i]
+    procs = []
+    try:
+        (p16, e16), (p48, e48) = (common.decode_stream(audio_file(track), sr) for sr in (SR16, SR48))
+        procs = [p16, p48]
+        n, sent = 0, 0
+        while True:
+            b16 = common.read_samples(p16.stdout, common.SEGMENT_S * SR16)
+            b48 = common.read_samples(p48.stdout, common.SEGMENT_S * SR48)
+            if len(b16) < common.SEGMENT_S * SR16 or len(b48) < common.SEGMENT_S * SR48:
+                break
+            n += 1
+            if n not in segments[track]:
+                continue
+            for k in range(PIECES):
+                s16 = b16[k * common.PIECE_S * SR16:(k + 1) * common.PIECE_S * SR16]
+                if common.is_silent(s16):
+                    continue
+                clips = common.piece_to_clips(torch.from_numpy(s16.copy()).unsqueeze(0))
+                q.put(("piece", i, (n, k + 1), clips, b48[k * common.PIECE_S * SR48:(k + 1) * common.PIECE_S * SR48]))
+                sent += 1
+        messages = [common.end_stream(p, e) for p, e in ((p16, e16), (p48, e48))]
+        q.put(("done", i, sent, messages))
+    except Exception as e:  # noqa: BLE001
+        for p in procs:
+            p.kill()
+        q.put(("failed", i, repr(e)))
+
+
+ib_model = common.load_imagebind(args.imagebind, args.checkpoint, modalities=(common.AUDIO,)) if todo else None
+clap_model = common.load_clap() if todo else None
+clap_features = common.ClapFeaturesGPU() if todo else None
+results, expected, failed = defaultdict(list), {}, set()
+
+
+def embed(batch):
+    ib = common.embed_imagebind(ib_model, common.AUDIO, torch.stack([b[3] for b in batch]))
+    cl = common.embed_clap(clap_model, *clap_features(torch.from_numpy(np.stack([b[4] for b in batch])).cuda()))
+    for b, v_ib, v_cl in zip(batch, ib, cl):
+        if b[1] not in failed:
+            results[b[1]].append((b[2], v_ib, v_cl))
+
+
+def save(i):
+    rows = sorted(results.pop(i, []), key=lambda r: r[0])
+    path = target(todo[i])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.stem + ".tmp.npz")
+    np.savez(tmp, imagebind=np.array([r[1] for r in rows], np.float32).reshape(-1, 1024),
+             clap=np.array([r[2] for r in rows], np.float32).reshape(-1, 512),
+             segment=np.array([r[0][0] for r in rows], np.int64), piece=np.array([r[0][1] for r in rows], np.int64))
+    tmp.replace(path)
+
+
+def complete():
+    for i in [i for i in expected if len(results[i]) == expected[i]]:
+        del expected[i]
+        save(i)
+
+
+t0, last = time.time(), time.time()
 with ThreadPoolExecutor(THREADS) as ex:
-    for k in todo:
-        t0 = time.time()
-        jobs = [(t, i, s) for t in chunks[k] for i, s in enumerate(common.plan(durations[t["file"]]))]
-        results = ex.map(piece, [(args.data / t["file"], s) for t, _, s in jobs])
-        vectors, rows, kept, batch = [], [], [], []
-        for (t, i, s), (clips, n, status) in zip(jobs, results):
-            rows.append([t["file"], i, f"{s:.3f}", f"{n / common.IB_SAMPLE_RATE:.3f}", status])
-            if clips is not None:
-                batch.append(clips)
-                kept.append(len(rows) - 1)
+    futures = [ex.submit(worker, i) for i in range(len(todo))]
+    batch, written = [], 0
+    while True:
+        try:
+            item = q.get(timeout=0.5)
+        except queue.Empty:
+            if all(f.done() for f in futures) and q.empty():
+                break
+            continue
+        if item[0] == "piece":
+            batch.append(item)
             if len(batch) == BATCH:
-                vectors.append(common.embed_imagebind(model, common.AUDIO, torch.stack(batch)))
+                embed(batch)
                 batch = []
-        if batch:
-            vectors.append(common.embed_imagebind(model, common.AUDIO, torch.stack(batch)))
-        vectors = np.concatenate(vectors) if vectors else np.zeros((0, 1024), np.float32)
-        np.savez(out / f"music_{k:03d}.tmp.npz", vectors=vectors, kept=np.array(kept, dtype=np.int64),
-                 rows=np.array(rows, dtype=object))
-        (out / f"music_{k:03d}.tmp.npz").replace(out / f"music_{k:03d}.npz")
-        bad = sum(1 for r in rows if not r[4].startswith("ok"))
-        log.write(f'{time.strftime("%H:%M:%S")} chunk {k + 1}/{len(chunks)}: {len(rows)} pieces, {bad} without vector, '
-                  f'{time.time() - t0:.0f} s\n')
+        elif item[0] == "done":
+            expected[item[1]] = item[2]
+            for rc, text in item[3]:
+                if rc or text:
+                    say(f"{todo[item[1]]}: FFmpeg {rc} {' '.join(text.split())[:200]}")
+        else:
+            failed.add(item[1])
+            results.pop(item[1], None)
+            say(f"FAILED {todo[item[1]]}: {item[2]}")
+        if not batch or len(batch) == BATCH:
+            before = len(expected)
+            complete()
+            written += before - len(expected)
+        if time.time() - last > 60:
+            last = time.time()
+            say(f"{written}/{len(todo)} tracks, {(time.time() - t0) / 60:.0f} min")
+    if batch:
+        embed(batch)
+    complete()
+say(f"end: {len(todo) - len(expected) - len(failed)} tracks written in {(time.time() - t0) / 60:.1f} min, "
+    f"failed {len(failed)}")
 
-all_vectors, out_rows, offset = [], [], 0
-for k in range(len(chunks)):
-    z = np.load(out / f"music_{k:03d}.npz", allow_pickle=True)
-    row_of = {j: offset + n for n, j in enumerate(z["kept"].tolist())}
-    assert len(row_of) == len(z["vectors"])
-    offset += len(row_of)
-    all_vectors.append(z["vectors"])
-    for j, r in enumerate(z["rows"].tolist()):
-        out_rows.append(r + [row_of.get(j, -1)])
-vectors = np.concatenate(all_vectors)
-np.save(args.output / "music_vectors_imagebind.npy", vectors)
-meta = {t["file"]: (t["class"], t["split"]) for t in tracks}
+missing = [t for t in tracks if not target(t).exists()]
+assert not missing, f"{len(missing)} tracks without vectors (see the log), e.g. {missing[:3]}; run the script again"
+rows = []
+for track, r in tracks.items():
+    with np.load(target(track)) as z:
+        rows += [[track, f"{track}_{n:03d}", k, r["class"], r["split"]] for n, k in zip(z["segment"], z["piece"])]
+ib = np.lib.format.open_memmap(args.output / "music_vectors_imagebind.npy", "w+", np.float32, (len(rows), 1024))
+cl = np.lib.format.open_memmap(args.output / "music_vectors_clap.npy", "w+", np.float32, (len(rows), 512))
+i = 0
+for track in tracks:
+    with np.load(target(track)) as z:
+        ib[i:i + len(z["piece"])], cl[i:i + len(z["piece"])] = z["imagebind"], z["clap"]
+        i += len(z["piece"])
+ib.flush()
+cl.flush()
 with open(args.output / "music_pieces.csv", "w", encoding="utf-8", newline="") as f:
     w = csv.writer(f)
-    w.writerow(["file", "class", "split", "piece", "start_s", "decoded_s", "status", "vector_row"])
-    for r in out_rows:
-        w.writerow([r[0], *meta[r[0]], *r[1:]])
-statuses = {}
-for r in out_rows:
-    key = r[4].split(" ")[0].rstrip(",")
-    statuses[key] = statuses.get(key, 0) + 1
-log.write(f'{time.strftime("%Y-%m-%d %H:%M:%S")} done: {len(out_rows)} pieces, {vectors.shape[0]} vectors, '
-          f'status {statuses}\n')
+    w.writerow(["track", "segment", "piece", "class", "split", "vector_row"])
+    w.writerows(r + [j] for j, r in enumerate(rows))
+say(f"done: {len(rows)} pieces of {len(tracks)} tracks")
 log.close()

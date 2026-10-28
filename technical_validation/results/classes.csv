@@ -1,42 +1,42 @@
 class,group,images,tracks,rank_music_to_image,rank_image_to_music,nearest_image_class,track_to_images_same_class,chance_images,image_to_tracks_same_class,chance_tracks,f1_images,f1_music_clap,f1_music_imagebind
-Pre-renaissance sacred,historical,408,3,1,1,Pre-renaissance sacred,0.6333,0.0159,0.2662,0.0006,0.9880,0.0000,0.0000
-Pre-renaissance secular,historical,180,7,7,6,South European folklore,0.0286,0.0070,0.0028,0.0013,0.9412,0.6667,1.0000
-Flemish sacred,historical,205,5,5,4,Pre-renaissance sacred,0.1200,0.0080,0.0966,0.0009,0.8947,0.5000,0.0000
-Flemish secular,historical,212,9,8,5,Renaissance sacred,0.0000,0.0083,0.0849,0.0017,0.8500,0.0000,1.0000
-Renaissance sacred,historical,696,6,2,2,Pre-renaissance sacred,0.1000,0.0271,0.1701,0.0011,0.8092,0.0000,0.0000
-Renaissance secular,historical,1029,6,1,1,Renaissance secular,0.0667,0.0401,0.0249,0.0011,0.8696,0.0000,0.0000
-Baroque sacred,historical,843,97,14,9,Classical secular,0.0392,0.0328,0.0898,0.0179,0.7143,0.7500,0.7778
-Baroque secular,historical,939,1238,4,7,Classical secular,0.1773,0.0366,0.8342,0.2287,0.8229,0.9272,0.9421
-Classical sacred,historical,370,3,1,6,Classical sacred,0.1000,0.0144,0.0000,0.0006,0.6944,0.0000,0.0000
-Classical secular,historical,335,51,1,2,Classical secular,0.0549,0.0130,0.0340,0.0094,0.7500,0.2500,0.0000
-Romanticism chamber,historical,489,70,17,23,20th century traditional chamber,0.0414,0.0190,0.0174,0.0129,0.8163,0.5000,0.7143
-Romanticism orchestral,historical,217,12,7,10,Classical secular,0.0000,0.0084,0.0014,0.0022,0.8696,0.0000,0.0000
-Late romanticism chamber,historical,1987,82,2,4,20th century traditional chamber,0.2476,0.0774,0.0648,0.0151,0.7873,0.3333,0.3478
-Late romanticism orchestral,historical,2170,42,13,8,"Middle, north European folklore",0.2690,0.0845,0.0176,0.0078,0.7627,0.2500,0.3333
-Early 20th century traditional chamber,historical,356,40,3,16,20th century traditional chamber,0.0125,0.0139,0.0208,0.0074,0.5672,0.3333,0.0000
-Early 20th century traditional orchestral,historical,721,35,9,18,"Middle, north European folklore",0.0314,0.0281,0.0029,0.0065,0.6519,0.2857,0.4000
-Early 20th century experimental chamber,historical,681,25,2,7,20th century traditional chamber,0.0240,0.0265,0.0363,0.0046,0.5839,0.5000,0.0000
-Early 20th century experimental orchestral,historical,748,21,10,21,Heavy metal,0.0143,0.0291,0.0001,0.0039,0.5556,0.0000,0.0000
-20th century traditional chamber,historical,451,27,1,6,20th century traditional chamber,0.1593,0.0176,0.0419,0.0050,0.5333,0.0000,0.0000
-20th century traditional orchestral,historical,397,38,19,17,"Middle, north European folklore",0.0000,0.0155,0.0134,0.0070,0.7209,0.0000,0.0000
-20th century experimental chamber,historical,1146,112,6,17,Early 20th century experimental chamber,0.0607,0.0446,0.0204,0.0207,0.6128,0.7619,0.5882
-20th century experimental orchestral,historical,1038,114,6,7,Heavy metal,0.0228,0.0404,0.0721,0.0211,0.5830,0.8148,0.6897
-African traditional folklore,geographical,1102,18,1,1,African traditional folklore,0.2000,0.0429,0.0872,0.0033,0.6667,0.5000,0.0000
-Afro-American,geographical,743,81,5,9,"Rap, hip hop",0.1296,0.0289,0.0783,0.0150,0.6216,0.7143,0.6667
-East Asian traditional folklore,geographical,870,18,1,1,East Asian traditional folklore,0.6000,0.0339,0.5655,0.0033,0.9714,1.0000,1.0000
-East European folklore,geographical,534,25,1,4,East European folklore,0.1160,0.0208,0.0369,0.0046,0.7255,0.0000,0.0000
-Latin-American,geographical,958,30,1,3,Latin-American,0.3000,0.0373,0.0495,0.0055,0.5938,1.0000,0.5714
-"Middle, north European folklore",geographical,431,40,2,1,East European folklore,0.1100,0.0168,0.0780,0.0074,0.5882,0.0000,0.5000
-"Middle, south Asian traditional folklore",geographical,484,21,1,1,"Middle, south Asian traditional folklore",0.6857,0.0188,0.2277,0.0039,0.6542,0.4000,0.3333
-North American traditional folklore,geographical,431,9,5,2,"Middle, north European folklore",0.0556,0.0168,0.0747,0.0017,0.8250,0.0000,0.0000
-South American traditional folklore,geographical,440,9,5,7,South European folklore,0.0889,0.0171,0.0259,0.0017,0.4324,1.0000,0.0000
-South European folklore,geographical,295,24,2,3,East European folklore,0.1250,0.0115,0.0610,0.0044,0.5357,0.5714,0.5000
-Country,stylistic,111,11,1,5,Country,0.1000,0.0043,0.0514,0.0020,0.7778,0.0000,1.0000
-Dance,stylistic,214,345,2,4,"Rap, hip hop",0.0783,0.0083,0.2902,0.0637,0.7692,0.7200,0.6944
-Electronic,stylistic,745,78,2,1,Heavy metal,0.2295,0.0290,0.1148,0.0144,0.5972,0.2857,0.5333
-Heavy metal,stylistic,1330,105,1,38,Heavy metal,0.7286,0.0518,0.0526,0.0194,0.7509,0.9167,0.8696
-Jazz,stylistic,303,1389,5,9,Afro-American,0.2398,0.0118,0.2162,0.2566,0.6154,0.9281,0.9130
-Pop,stylistic,509,47,1,28,Pop,0.3213,0.0198,0.0092,0.0087,0.6731,0.4444,0.5000
-"Rap, hip hop",stylistic,132,361,1,1,"Rap, hip hop",0.5319,0.0051,0.5727,0.0667,0.6667,0.8955,0.8986
-Rock,stylistic,258,508,2,17,Pop,0.1634,0.0100,0.1895,0.0938,0.4000,0.8163,0.8333
-Western songwriting,stylistic,175,251,5,16,Pop,0.0299,0.0068,0.1069,0.0464,0.3500,0.6786,0.6667
+Pre-renaissance sacred,historical,408,3,1,1,Pre-renaissance sacred,0.6333,0.0159,0.2816,0.0006,0.9880,0.0000,0.0000
+Pre-renaissance secular,historical,180,7,7,6,South European folklore,0.0571,0.0070,0.0017,0.0013,0.9412,0.0000,0.6667
+Flemish sacred,historical,205,5,5,4,Pre-renaissance sacred,0.1200,0.0080,0.0946,0.0009,0.8947,0.5000,0.6667
+Flemish secular,historical,212,9,8,5,Renaissance sacred,0.0111,0.0083,0.0877,0.0017,0.8500,0.0000,1.0000
+Renaissance sacred,historical,696,6,2,2,Pre-renaissance sacred,0.1000,0.0271,0.1772,0.0011,0.8092,0.0000,0.0000
+Renaissance secular,historical,1029,6,1,1,Renaissance secular,0.0667,0.0401,0.0385,0.0011,0.8696,0.0000,0.0000
+Baroque sacred,historical,843,97,14,9,Classical secular,0.0351,0.0328,0.0956,0.0180,0.7143,0.7500,0.7059
+Baroque secular,historical,939,1236,4,7,Classical secular,0.1773,0.0366,0.7683,0.2289,0.8229,0.9242,0.9412
+Classical sacred,historical,370,3,1,6,Classical sacred,0.1333,0.0144,0.0000,0.0006,0.6944,0.0000,0.0000
+Classical secular,historical,335,51,1,2,Classical secular,0.0510,0.0130,0.0672,0.0094,0.7500,0.0000,0.3333
+Romanticism chamber,historical,489,68,17,24,20th century traditional chamber,0.0471,0.0190,0.0301,0.0126,0.8163,0.3333,0.5714
+Romanticism orchestral,historical,217,12,8,10,Classical secular,0.0000,0.0084,0.0018,0.0022,0.8696,0.0000,1.0000
+Late romanticism chamber,historical,1987,76,2,4,20th century traditional chamber,0.2487,0.0774,0.0876,0.0141,0.7873,0.3000,0.6087
+Late romanticism orchestral,historical,2170,42,13,8,Late romanticism chamber,0.2929,0.0845,0.0230,0.0078,0.7627,0.2353,0.5000
+Early 20th century traditional chamber,historical,356,40,3,17,20th century traditional chamber,0.0100,0.0139,0.0289,0.0074,0.5672,0.2857,0.2857
+Early 20th century traditional orchestral,historical,721,35,10,16,Late romanticism chamber,0.0114,0.0281,0.0010,0.0065,0.6519,0.0000,0.4000
+Early 20th century experimental chamber,historical,681,25,4,8,20th century traditional chamber,0.0200,0.0265,0.0211,0.0046,0.5839,0.0000,0.0000
+Early 20th century experimental orchestral,historical,748,21,11,21,Heavy metal,0.0000,0.0291,0.0004,0.0039,0.5556,0.0000,0.0000
+20th century traditional chamber,historical,451,27,1,7,20th century traditional chamber,0.1704,0.0176,0.0188,0.0050,0.5333,0.0000,0.0000
+20th century traditional orchestral,historical,397,38,19,19,"Middle, north European folklore",0.0000,0.0155,0.0071,0.0070,0.7209,0.0000,0.0000
+20th century experimental chamber,historical,1146,112,6,18,20th century traditional chamber,0.0571,0.0446,0.0225,0.0207,0.6128,0.6250,0.7778
+20th century experimental orchestral,historical,1038,114,5,6,Heavy metal,0.0237,0.0404,0.0964,0.0211,0.5830,0.7857,0.7333
+African traditional folklore,geographical,1102,18,1,1,African traditional folklore,0.2111,0.0429,0.0876,0.0033,0.6667,0.0000,0.0000
+Afro-American,geographical,743,81,5,8,"Rap, hip hop",0.1173,0.0289,0.0740,0.0150,0.6216,0.7143,0.6667
+East Asian traditional folklore,geographical,870,18,1,1,East Asian traditional folklore,0.6111,0.0339,0.5798,0.0033,0.9714,0.6667,1.0000
+East European folklore,geographical,534,25,1,4,East European folklore,0.1080,0.0208,0.0352,0.0046,0.7255,0.0000,0.0000
+Latin-American,geographical,958,30,1,2,Latin-American,0.2967,0.0373,0.0526,0.0056,0.5938,0.8571,0.8000
+"Middle, north European folklore",geographical,431,40,2,2,East European folklore,0.1100,0.0168,0.0858,0.0074,0.5882,0.4000,0.7500
+"Middle, south Asian traditional folklore",geographical,484,21,1,1,"Middle, south Asian traditional folklore",0.6810,0.0188,0.2219,0.0039,0.6542,0.4000,0.4000
+North American traditional folklore,geographical,431,9,5,1,"Middle, north European folklore",0.0778,0.0168,0.0650,0.0017,0.8250,0.0000,0.0000
+South American traditional folklore,geographical,440,9,5,7,South European folklore,0.0889,0.0171,0.0364,0.0017,0.4324,1.0000,1.0000
+South European folklore,geographical,295,24,2,3,East European folklore,0.1458,0.0115,0.0712,0.0044,0.5357,0.5714,0.4000
+Country,stylistic,111,11,1,4,Country,0.1273,0.0043,0.0459,0.0020,0.7778,0.0000,1.0000
+Dance,stylistic,214,343,2,3,"Rap, hip hop",0.0863,0.0083,0.3182,0.0635,0.7692,0.7733,0.7671
+Electronic,stylistic,745,78,2,1,Heavy metal,0.2500,0.0290,0.1024,0.0144,0.5972,0.5714,0.5000
+Heavy metal,stylistic,1330,105,1,38,Heavy metal,0.7267,0.0518,0.0509,0.0194,0.7509,0.9565,0.9167
+Jazz,stylistic,303,1389,5,9,Afro-American,0.2492,0.0118,0.1891,0.2573,0.6154,0.9281,0.9386
+Pop,stylistic,509,47,1,25,Pop,0.2957,0.0198,0.0104,0.0087,0.6731,0.5000,0.4444
+"Rap, hip hop",stylistic,132,359,1,1,"Rap, hip hop",0.5292,0.0051,0.5470,0.0665,0.6667,0.8788,0.8955
+Rock,stylistic,258,508,1,15,Rock,0.1744,0.0100,0.2267,0.0941,0.4000,0.8713,0.8687
+Western songwriting,stylistic,175,251,5,14,Pop,0.0287,0.0068,0.1240,0.0465,0.3500,0.7170,0.7143
